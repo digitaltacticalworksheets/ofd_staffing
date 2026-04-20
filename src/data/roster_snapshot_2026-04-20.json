@@ -1,0 +1,1375 @@
+{
+  "date": "2026-04-20",
+  "shift": "B",
+  "districts": {
+    "D1": {
+      "AC1": [
+        {
+          "position": "Assistant Chief",
+          "name": "B Romano",
+          "rank": "ACPM",
+          "status": [
+            "ON"
+          ]
+        }
+      ],
+      "D1": [
+        {
+          "position": "District Chief",
+          "name": "R Ferreira",
+          "rank": "DCP",
+          "status": [
+            "TS+"
+          ]
+        }
+      ],
+      "E1": [
+        {
+          "position": "Lieutenant",
+          "name": "D C Corby",
+          "rank": "LTE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "A S Jelenek",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "J Urichko",
+          "rank": "FFE",
+          "status": [
+            "OT"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "C Johnston",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E101": [
+        {
+          "position": "Lieutenant",
+          "name": "J M Mcgovern",
+          "rank": "LTE",
+          "status": [
+            "OT"
+          ]
+        },
+        {
+          "position": "Lieutenant Relief",
+          "name": "T J Ewald",
+          "rank": "LTP",
+          "status": [
+            "HBFD",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "T L Hutcheson",
+          "rank": "ENP",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "D Sumeersarnauth",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "I Sheridan",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "T1": [
+        {
+          "position": "Lieutenant",
+          "name": "Q T Schider-heisel",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "S Gawler",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "J A Alvarez",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "M Hahn",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R1": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "C M White",
+          "rank": "FFP",
+          "status": [
+            "TS+"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "K Warren",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E4": [
+        {
+          "position": "Lieutenant",
+          "name": "A Bassani",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "D Wade",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "A S Donohoe",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "A Betancourt",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E5": [
+        {
+          "position": "Lieutenant",
+          "name": "M A Thomas",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "J Ward iii",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "J Hill",
+          "rank": "FFP",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "B L Stilwell",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E6": [
+        {
+          "position": "Lieutenant",
+          "name": "V C Woodbrey",
+          "rank": "LTP",
+          "status": [
+            "TP1",
+            "ECS"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "M F Holcomb",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "K Blanchard",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "K A Dupont",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "T6": [
+        {
+          "position": "Lieutenant",
+          "name": "K Moore",
+          "rank": "LTP",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "M D Hamilton",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "F J Saccente",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "G G Love",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R6": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "G P Kaufman",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "M Llopiz",
+          "rank": "FFE",
+          "status": [
+            "TP1"
+          ]
+        }
+      ]
+    },
+    "D2": {
+      "D2": [
+        {
+          "position": "District Chief",
+          "name": "B A Walls",
+          "rank": "DCP",
+          "status": [
+            "ON"
+          ]
+        }
+      ],
+      "E10": [
+        {
+          "position": "Lieutenant",
+          "name": "N Ellis",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "C Moore",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "B Walter",
+          "rank": "FFE",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "A Herrera valencia",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "T10": [
+        {
+          "position": "Lieutenant",
+          "name": "G M Powell",
+          "rank": "LTE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "M J Mcgurk",
+          "rank": "ENE",
+          "status": [
+            "REG",
+            "OT"
+          ]
+        },
+        {
+          "position": "Engineer Relief",
+          "name": "R Gregory",
+          "rank": "ENP",
+          "status": [
+            "SICK",
+            "0800-1200"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "R Duarte",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "B M Sims",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R10": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "S Gomez",
+          "rank": "ENP",
+          "status": [
+            "REG+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "A Romelus",
+          "rank": "FFE",
+          "status": [
+            "TS+TRAN"
+          ]
+        }
+      ],
+      "E12": [
+        {
+          "position": "Lieutenant",
+          "name": "B J Mitchell",
+          "rank": "LTE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "R W Florkowski",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "D Torres",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R12": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "R J Stilp",
+          "rank": "ENP",
+          "status": [
+            "TS+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "K Rene",
+          "rank": "FFE",
+          "status": [
+            "REG+TRAN"
+          ]
+        }
+      ],
+      "E17": [
+        {
+          "position": "Lieutenant",
+          "name": "J Pompi",
+          "rank": "LTP",
+          "status": [
+            "TP1",
+            "ECS"
+          ]
+        },
+        {
+          "position": "Lieutenant Relief",
+          "name": "J J Clayton",
+          "rank": "LTP",
+          "status": [
+            "OTWHL+4",
+            "0800-1200"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "B P Dinunzio",
+          "rank": "ENE",
+          "status": [
+            "SICK",
+            "0800-1100"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "A S Fisher",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "N Novembre",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ]
+    },
+    "D3": {
+      "D3": [
+        {
+          "position": "District Chief",
+          "name": "J J Jefferson",
+          "rank": "DCP",
+          "status": [
+            "ORSA",
+            "2000-0800"
+          ]
+        },
+        {
+          "position": "District Chief Relief",
+          "name": "A Hioki",
+          "rank": "DCE",
+          "status": [
+            "WBACK",
+            "2000-0800"
+          ]
+        }
+      ],
+      "E2": [
+        {
+          "position": "Lieutenant",
+          "name": "E A Spyrides",
+          "rank": "LTE",
+          "status": [
+            "OTWHL+4",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Lieutenant Relief",
+          "name": "R K Huguenin",
+          "rank": "LTP",
+          "status": [
+            "HBFD",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "C Bradley",
+          "rank": "ENE",
+          "status": [
+            "OT",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Engineer Relief",
+          "name": "R J Sisko",
+          "rank": "ENE",
+          "status": [
+            "HBFD",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "W Burkett",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "E Williams",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R2": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "C M Gonsowski",
+          "rank": "ENE",
+          "status": [
+            "WHE+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "N Wright",
+          "rank": "FFP",
+          "status": [
+            "OT",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "K Henry",
+          "rank": "FFP",
+          "status": [
+            "REG+TRAN",
+            "1400-0800"
+          ]
+        }
+      ],
+      "T2": [
+        {
+          "position": "Lieutenant",
+          "name": "R L Nagle",
+          "rank": "LTP",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "M P Powell",
+          "rank": "ENP",
+          "status": [
+            "HBFD",
+            "0800-1400"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "T Berry",
+          "rank": "FFE",
+          "status": [
+            "OT",
+            "0800-0830"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "B K Ferreira",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 3",
+          "name": "K Henry",
+          "rank": "FFP",
+          "status": [
+            "T2 0800-1400"
+          ]
+        },
+        {
+          "position": "Firefighter Relief",
+          "name": "E Vazquez",
+          "rank": "FFE",
+          "status": [
+            "WHE",
+            "0800-1200"
+          ]
+        }
+      ],
+      "E3": [
+        {
+          "position": "Lieutenant",
+          "name": "T Visser",
+          "rank": "LTP",
+          "status": [
+            "OT"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "S M Wolford",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "H Wise",
+          "rank": "FFE",
+          "status": [
+            "OT",
+            "0800-1400",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "A Peavey",
+          "rank": "FFE",
+          "status": [
+            "HBFD",
+            "0800-1400"
+          ]
+        }
+      ],
+      "R3": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "T E Rau",
+          "rank": "ENP",
+          "status": [
+            "OT",
+            "0800-0830"
+          ]
+        },
+        {
+          "position": "Engineer/Paramedic 2",
+          "name": "D Bradley",
+          "rank": "ENP",
+          "status": [
+            "REG+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "K Mickle",
+          "rank": "FFE",
+          "status": [
+            "REG+TRAN",
+            "TP1"
+          ]
+        }
+      ],
+      "HR1": [
+        {
+          "position": "Lieutenant",
+          "name": "J A Tramuta",
+          "rank": "LTE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "C Mustelier",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "C Robinson",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "E R Bearss",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 3",
+          "name": "A B Mullins",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E7": [
+        {
+          "position": "Lieutenant",
+          "name": "Q Heard",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "D Thrappas",
+          "rank": "ENE",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "D Util",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R7": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "C Dixon",
+          "rank": "ENE",
+          "status": [
+            "WHE+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "R Lindblom",
+          "rank": "FFP",
+          "status": [
+            "REG+TRAN"
+          ]
+        }
+      ],
+      "E9": [
+        {
+          "position": "Lieutenant",
+          "name": "D M Roberts",
+          "rank": "LTP",
+          "status": [
+            "OT"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "D A Dukat",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "J Estrella",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "Q Hutton",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "T9": [
+        {
+          "position": "Lieutenant",
+          "name": "F E Hair",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "D M Pinkman",
+          "rank": "ENE",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "C C Smith",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "M Robles",
+          "rank": "FFE",
+          "status": [
+            "REG",
+            "LD"
+          ]
+        }
+      ],
+      "R9": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "G S Pando",
+          "rank": "ENP",
+          "status": [
+            "OT"
+          ]
+        },
+        {
+          "position": "Engineer/Paramedic 2",
+          "name": "J Young",
+          "rank": "ENP",
+          "status": [
+            "REG+TRAN",
+            "1600-0800",
+            "WHE"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "H Wise",
+          "rank": "FFE",
+          "status": [
+            "OT+TRAN",
+            "1400-0800",
+            "KD"
+          ]
+        }
+      ]
+    },
+    "D4": {
+      "D4": [
+        {
+          "position": "District Chief",
+          "name": "A J Mills",
+          "rank": "DCE",
+          "status": [
+            "ON"
+          ]
+        }
+      ],
+      "E8": [
+        {
+          "position": "Lieutenant",
+          "name": "M A Cintron",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "J D Patterson",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "M Ramirez",
+          "rank": "FFP",
+          "status": [
+            "TP1"
+          ]
+        }
+      ],
+      "T8": [
+        {
+          "position": "Lieutenant",
+          "name": "R Weir",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "M J Garland",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "A Strebeck",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "W C Thompson",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R8": [
+        {
+          "position": "Engineer",
+          "name": "E A Spyrides",
+          "rank": "ENE",
+          "status": [
+            "OT+TRAN",
+            "1400-0800"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "S P Keith",
+          "rank": "FFE",
+          "status": [
+            "OT",
+            "0800-1530"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "J Blandon becerra",
+          "rank": "FFP",
+          "status": [
+            "WHE+TRAN",
+            "0800-1400"
+          ]
+        }
+      ],
+      "E11": [
+        {
+          "position": "Lieutenant",
+          "name": "P M Cada",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "J Rojas",
+          "rank": "ENE",
+          "status": [
+            "WHE"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "M Mackendree",
+          "rank": "FFP",
+          "status": [
+            "TP1"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "R Madden",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "T11": [
+        {
+          "position": "Lieutenant",
+          "name": "S Butschek",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "B W Cable",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "C Lebida",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "A Muriel",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "R11": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "A Vanvalkenburg",
+          "rank": "ENP",
+          "status": [
+            "REG+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "A Mceachern",
+          "rank": "FFE",
+          "status": [
+            "REG+TRAN"
+          ]
+        }
+      ],
+      "E13": [
+        {
+          "position": "Lieutenant",
+          "name": "J M Dunn",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "R S Goldenberg",
+          "rank": "ENP",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "D R Hancock",
+          "rank": "FFE",
+          "status": [
+            "TS+"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "A E Hardy",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ]
+    },
+    "D5": {
+      "D5": [
+        {
+          "position": "District Chief",
+          "name": "N P Reed",
+          "rank": "DCP",
+          "status": [
+            "ON"
+          ]
+        }
+      ],
+      "HAZ1": [
+        {
+          "position": "Lieutenant",
+          "name": "J Rubottom",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "J R Fussell",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "Z G Gonzalez",
+          "rank": "FFE",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "S K Lund",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E14": [
+        {
+          "position": "Lieutenant",
+          "name": "J L Bishop",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "J S Grant",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "W T Botts-wright",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "T M Bowne",
+          "rank": "FFE",
+          "status": [
+            "TP1"
+          ]
+        }
+      ],
+      "E15": [
+        {
+          "position": "Lieutenant",
+          "name": "J V Orrange",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "G Shepard",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "E R Hinchey",
+          "rank": "FFE",
+          "status": [
+            "TP1"
+          ]
+        }
+      ],
+      "R15": [
+        {
+          "position": "Engineer/Paramedic",
+          "name": "L M Urra",
+          "rank": "ENP",
+          "status": [
+            "REG+TRAN"
+          ]
+        },
+        {
+          "position": "Firefighter",
+          "name": "A Mucherera",
+          "rank": "FFE",
+          "status": [
+            "OT+TRAN",
+            "KD"
+          ]
+        }
+      ],
+      "T15": [
+        {
+          "position": "Lieutenant",
+          "name": "T J Johnston",
+          "rank": "LTP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "N T Healy",
+          "rank": "ENE",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "A V Williams",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "M S Harmon",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        }
+      ],
+      "E16": [
+        {
+          "position": "Lieutenant",
+          "name": "A S Parisi",
+          "rank": "LTP",
+          "status": [
+            "OT",
+            "KD"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "R L Hernandez",
+          "rank": "ENP",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "C R Walsh",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "D White",
+          "rank": "FFE",
+          "status": [
+            "OT"
+          ]
+        }
+      ],
+      "E19": [
+        {
+          "position": "Lieutenant",
+          "name": "B J Surat",
+          "rank": "LTE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Engineer",
+          "name": "R M Pappas",
+          "rank": "ENE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 1",
+          "name": "J Logan",
+          "rank": "FFE",
+          "status": [
+            "REG"
+          ]
+        },
+        {
+          "position": "Firefighter 2",
+          "name": "E Solar",
+          "rank": "FFP",
+          "status": [
+            "REG"
+          ]
+        }
+      ]
+    }
+  }
+}

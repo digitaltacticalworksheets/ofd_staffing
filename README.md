@@ -51,3 +51,21 @@ npm run preview
   3. lower OT hours
   4. fewer refusals
 - If your source books later include a true promotional-list field, that can be added directly to ranking.
+
+
+## Roster / vacation / calendar layer
+
+This version adds:
+
+- exact sample roster mapping for **2026-04-20**
+- scheduled vacation overlay from `FOB Vacations Scheduled.csv`
+- 2026 shift / Kelly computation anchored to **2026-01-01 = A-4**
+- projected staffing mode for dates other than the sample roster date
+
+### Behavior
+
+- On `2026-04-20`, the app shows the uploaded live roster snapshot by district and unit.
+- On other dates, the app builds a projected board using:
+  - the staffing build
+  - the OT-book personnel dataset for the computed shift
+  - scheduled vacation / RDOF exclusions
