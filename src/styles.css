@@ -370,3 +370,18 @@ th, td {
     grid-template-columns: 1fr;
   }
 }
+
+
+.notice-panel { border-style: dashed; }
+.unit-header-rule {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid var(--line);
+}
+.unit-rule-line {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}

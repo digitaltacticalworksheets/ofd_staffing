@@ -69,3 +69,19 @@ This version adds:
   - the staffing build
   - the OT-book personnel dataset for the computed shift
   - scheduled vacation / RDOF exclusions
+
+
+## Special teams + future estimates
+
+This version adds:
+- special-team information on each rostered member card
+- unit-level special-team requirements from the staffing workbook
+- estimated future roster mode based on:
+  - staffing build
+  - computed shift by date
+  - scheduled vacation file
+
+
+## Kelly group support
+
+This build assigns each employee a `kelly_group` from the A/B/C KD book sheet they are listed on. Projected future-date boards now exclude the correct Kelly group automatically.
