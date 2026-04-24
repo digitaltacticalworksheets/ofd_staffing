@@ -1,418 +1,662 @@
-import React, { useMemo, useState } from 'react'
-import otDataset from './data/ot_dataset.json'
-import staffingBuild from './data/staffing_build.json'
-import rosterSnapshot from './data/roster_snapshot_2026-04-20.json'
-import availabilitySnapshot from './data/availability_snapshot_2026-04-20.json'
-import vacationsByDate from './data/vacations_by_date.json'
+import React, { useEffect, useMemo, useState } from "react";
+import staffingBuild from "./data/staffing_build.json";
 
-const SNAPSHOT_DATE = '2026-04-20'
+const SNAPSHOT_DATE = "2026-04-20";
+const API_BASE = "";
+
 const DISTRICTS = {
-  D1: ['AC1', 'D1', 'E1', 'E101', 'E4', 'E5', 'E6', 'T1', 'T6', 'R1', 'R6', 'M102'],
-  D2: ['D2', 'E10', 'E12', 'E17', 'T10', 'R10', 'R12', 'M171'],
-  D3: ['D3', 'E2', 'E3', 'E7', 'E9', 'T2', 'T9', 'HR1', 'R2', 'R3', 'R7', 'R9'],
-  D4: ['D4', 'E8', 'E11', 'E13', 'T8', 'T11', 'R8', 'R11', 'M141', 'M801'],
-  D5: ['D5', 'E14', 'E15', 'E16', 'E19', 'T15', 'HAZ1', 'R15', 'M161', 'M901'],
+  D1: ["AC1", "D1", "E1", "E101", "E4", "E5", "E6", "T1", "T6", "R1", "R6"],
+  D2: ["D2", "E10", "E12", "E17", "T10", "R10", "R12"],
+  D3: ["D3", "E2", "E3", "E7", "E9", "T2", "T9", "HR1", "R3", "R7", "R9"],
+  D4: ["D4", "E8", "E11", "E13", "T8", "T11", "R8", "R11"],
+  D5: ["D5", "E14", "E15", "E16", "E19", "T15", "HAZ1", "R15"],
+};
+
+const ALL_UNITS = Object.values(DISTRICTS).flat();
+
+const PAY_CODES = [
+  "",
+  "REG",
+  "VAC",
+  "SICK",
+  "ORSA",
+  "MIL",
+  "TRAINING",
+  "LIGHT DUTY",
+  "TS+",
+  "TS-",
+  "WHE",
+  "WHL",
+  "WHD",
+  "WHA",
+  "TRP",
+];
+
+function computeShiftKelly(dateStr) {
+  // Matches April 2026 calendar pattern:
+  // Apr 20 = B-8, Apr 21 = C-1, Apr 22 = A-1, Apr 23 = B-1
+  const anchor = new Date("2026-04-21T00:00:00");
+  const target = new Date(`${dateStr}T00:00:00`);
+  const diffDays = Math.floor((target - anchor) / 86400000);
+
+  const shifts = ["C", "A", "B"];
+  const shift = shifts[((diffDays % 3) + 3) % 3];
+  const kelly = (((Math.floor(diffDays / 3) + 1 - 1) % 8) + 8) % 8 + 1;
+
+  return { shift, kelly };
 }
 
-const SHORT_TO_LONG = {
-  E1:'Engine 1', E2:'Engine 2', E3:'Engine 3', E4:'Engine 4', E5:'Engine 5', E6:'Engine 6', E7:'Engine 7', E8:'Engine 8', E9:'Engine 9',
-  E10:'Engine 10', E11:'Engine 11', E12:'Engine 12', E13:'Engine 13', E14:'Engine 14', E15:'Engine 15', E16:'Engine 16', E17:'Engine 17', E19:'Engine 19', E101:'Engine 101',
-  T1:'Tower 1', T2:'Tower 2', T6:'Tower 6', T8:'Tower 8', T9:'Tower 9', T10:'Tower 10', T11:'Tower 11', T15:'Tower 15',
-  R1:'Rescue 1', R2:'Rescue 2', R3:'Rescue 3', R6:'Rescue 6', R7:'Rescue 7', R8:'Rescue 8', R9:'Rescue 9', R10:'Rescue 10', R11:'Rescue 11', R12:'Rescue 12', R15:'Rescue 15',
-  HR1:'Heavy Rescue 1', HAZ1:'Hazmat 1',
-  M102:'Medic 102', M141:'Medic 141', M161:'Medic 161', M171:'Medic 171', M801:'Medic 801', M901:'Medic 901',
-  D1:'District Chief 1', D2:'District Chief 2', D3:'District Chief 3', D4:'District Chief 4', D5:'District Chief 5', AC1:'Assistant Chief 1'
+function normalizeUnit(unit) {
+  return String(unit || "")
+    .toUpperCase()
+    .replace("ENGINE", "E")
+    .replace("TOWER", "T")
+    .replace("TRUCK", "T")
+    .replace("RESCUE", "R")
+    .replace("DISTRICT", "D")
+    .replace(/\s+/g, "")
+    .replace(/-/g, "")
+    .replace(/^E0+/, "E")
+    .replace(/^T0+/, "T")
+    .replace(/^R0+/, "R")
+    .replace(/^D0+/, "D")
+    .replace(/^HR01$/, "HR1")
+    .replace(/^HM1$/, "HAZ1");
 }
 
-function parseSkills(value) {
-  if (!value || value === 'None') return new Set()
-  return new Set(
-    String(value)
-      .replaceAll('/', ',')
-      .replaceAll('+', ',')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .filter((s) => s !== 'None')
-  )
+function normalizePerson(p) {
+  return {
+    ...p,
+    name: String(p.name || "").trim(),
+    rank: String(p.rank || "").trim(),
+    shift: String(p.shift || "").trim().toUpperCase(),
+    kd: Number(p.kd) || null,
+    assignment: normalizeUnit(p.assignment || p.unit),
+    payCode: String(p.payCode || p.pay_code || "").trim(),
+    credentials: Array.isArray(p.credentials) ? p.credentials : [],
+  };
 }
 
-function parseFirstInt(value) {
-  if (value == null || value === '') return null
-  const m = String(value).match(/(\d+)/)
-  return m ? Number(m[1]) : null
+function personKey(person) {
+  return person.employee_id || `${person.name}-${person.rank}-${person.shift}-${person.kd}`;
+}
+
+function getCredentialCodes(person) {
+  return (person.credentials || [])
+    .map((c) => String(c.code || c.Credential || c.credential || "").trim())
+    .filter(Boolean);
+}
+
+function hasCredential(person, codes) {
+  const personCodes = getCredentialCodes(person).map((c) => c.toUpperCase());
+  return codes.some((c) => personCodes.includes(c.toUpperCase()));
+}
+
+function isOfficer(person) {
+  const rank = String(person.rank || "").toUpperCase().replace(/\s+/g, "");
+  return rank.includes("LT") || rank.includes("LTP") || rank.includes("LTE") || rank.includes("LIEUTENANT");
+}
+
+function isEngineer(person) {
+  const rank = String(person.rank || "").toUpperCase().replace(/\s+/g, "");
+  return (
+    rank.includes("ENG") ||
+    rank.includes("ENGINEER") ||
+    rank.includes("ENP") ||
+    rank.includes("ENE") ||
+    rank.includes("ENGEMT") ||
+    rank.includes("ENGPM")
+  );
+}
+
+function isParamedic(person) {
+  const rank = String(person.rank || "").toUpperCase().replace(/\s+/g, "");
+  return rank.includes("PM") || rank.includes("PARAMEDIC") || rank.includes("LTP") || rank.includes("ENP") || rank.includes("ENGPM") || rank.includes("FFP") || hasCredential(person, ["P", "PM"]);
 }
 
 function buildModel() {
-  const unitRules = {}
-  const byLongName = {}
-  for (const row of staffingBuild.Unit_Summary || []) {
-    const unit = row.Unit
-    if (!unit) continue
-    const rule = {
-      unit,
-      unitType: row['Unit Type'] || '',
-      staffingPattern: row['Staffing Pattern'] || '',
-      specialTeamType: row['Special Team Type'] || null,
-      specialTeamMinimum: parseFirstInt(row['Special Team Minimum']),
-      paramedicMinimum: String(row['Unit Paramedic Minimum'] || '').includes('At least 1 PARAMEDIC') ? 1 : 0,
-      paramedicPreference: row['Paramedic Preference'] || null,
-      transportPayRule: row['Transport Pay Rule'] || null,
-      notes: row['Notes'] || '',
-    }
-    unitRules[unit] = rule
-    byLongName[unit] = rule
-  }
+  const map = {};
 
-  const positionMap = {}
-  for (const row of staffingBuild.Position_Build || []) {
-    const unit = row.Unit
-    if (!unit) continue
-    if (!positionMap[unit]) positionMap[unit] = []
-    positionMap[unit].push({
-      unit,
-      unitType: row['Unit Type'] || '',
-      label: row['Position Label'] || '',
-      order: Number(row['Position Order'] || 0),
-      rankRequired: row['Rank Required'] || '',
-      requiredSkills: parseSkills(row['Required Skills']),
-      alternateRankAllowed: row['Alternate Rank Allowed'] || null,
-      alternateRankCondition: row['Alternate Rank Condition'] || null,
-      preferenceOrder: row['Preference Order'] || '',
-      whcCode: row['WHC Code If Alternate Assigned'] || '',
-      whcMinimumHours: row['WHC Minimum Hours'] || '',
-      notes: row['Position Notes'] || '',
-    })
-  }
-  for (const unit of Object.keys(positionMap)) positionMap[unit].sort((a,b)=>a.order-b.order)
+  staffingBuild.Position_Build.forEach((row) => {
+    const unit = normalizeUnit(row.Unit);
+    if (!map[unit]) map[unit] = [];
 
-  const shortRules = {}
-  const shortPositions = {}
-  for (const [shortName, longName] of Object.entries(SHORT_TO_LONG)) {
-    if (byLongName[longName]) shortRules[shortName] = byLongName[longName]
-    if (positionMap[longName]) shortPositions[shortName] = positionMap[longName]
-  }
+    map[unit].push({
+      position: row["Position Label"],
+      rank: row["Rank Required"],
+      order: Number(row["Position Order"]) || 0,
+    });
+  });
 
-  return { unitRules: shortRules, positionMap: shortPositions, fullRules: byLongName, fullPositions: positionMap }
+  // Chief officer positions: one seat each
+  ["AC1", "D1", "D2", "D3", "D4", "D5"].forEach((unit) => {
+    map[unit] = [
+      {
+        position: "Chief",
+        rank: "Chief Officer",
+        order: 1,
+      },
+    ];
+  });
+
+  // Heavy Rescue 1: force 5 seats
+  map.HR1 = [
+    { position: "Officer", rank: "Lieutenant", order: 1 },
+    { position: "Engineer", rank: "Engineer", order: 2 },
+    { position: "Firefighter", rank: "Firefighter", order: 3 },
+    { position: "Firefighter", rank: "Firefighter", order: 4 },
+    { position: "Firefighter", rank: "Firefighter", order: 5 },
+  ];
+
+  Object.keys(map).forEach((unit) => map[unit].sort((a, b) => a.order - b.order));
+  return map;
 }
 
-function computeShiftKelly(dateStr) {
-  const base = new Date('2026-01-01T00:00:00')
-  const target = new Date(`${dateStr}T00:00:00`)
-  const diffDays = Math.floor((target - base) / 86400000)
-  const shifts = ['A', 'B', 'C']
-  const shift = shifts[((diffDays % 3) + 3) % 3]
-  const kelly = (((4 - 1 + diffDays) % 8) + 8) % 8 + 1
-  return { shift, kelly }
+function canFillSeat(person, seat) {
+  const required = String(seat.rank || seat.position || "").toUpperCase();
+  if (required.includes("CHIEF")) return true;
+  if (required.includes("LIEUTENANT") || required.includes("OFFICER") || required.includes("LT")) return isOfficer(person);
+  if (required.includes("ENGINEER") || required.includes("DRIVER")) return isEngineer(person) || hasCredential(person, ["E"]);
+  return true;
 }
 
-function normalizeName(name) {
-  return String(name || '').toUpperCase().replace(/\s+/g, ' ').trim()
+function scoreSeatFit(person, seat, unit) {
+  let score = 0;
+  const position = String(seat.position || "").toUpperCase();
+  const cleanUnit = normalizeUnit(unit);
+  if (canFillSeat(person, seat)) score += 100;
+  if (isParamedic(person)) score += 15;
+  if (cleanUnit.startsWith("T") && hasCredential(person, ["L", "T"])) score += 25;
+  if (cleanUnit === "HAZ1" && hasCredential(person, ["H"])) score += 30;
+  if (cleanUnit === "HR1" && hasCredential(person, ["A", "B", "D"])) score += 30;
+  if (position.includes("PARAMEDIC") && isParamedic(person)) score += 40;
+  return score;
 }
 
-function buildOffLists(dateStr, shift) {
-  const dateVac = vacationsByDate?.[dateStr]?.[shift] || []
-  const scheduledVacation = [...new Set(dateVac.filter((e) => e.code === 'VAC').map((e) => e.name))]
-  const rdof = [...new Set(dateVac.filter((e) => e.code === 'RDOF').map((e) => e.name))]
-  if (dateStr === SNAPSHOT_DATE) {
-    return {
-      scheduledVacation,
-      rdof,
-      sick24: [...new Set(availabilitySnapshot.sick24 || [])],
-      kelly: [...new Set(availabilitySnapshot.kelly || [])],
-      sickPartial: availabilitySnapshot.sickPartial || [],
-      miscLeave: [...new Set((availabilitySnapshot.miscLeave || []).map((x) => typeof x === 'string' ? x : x.name))],
-      timeSwap: availabilitySnapshot.timeSwap || [],
-      lightDuty: [...new Set(availabilitySnapshot.lightDuty || [])],
-      otLeave: [...new Set((availabilitySnapshot.otLeave || []).map((x) => typeof x === 'string' ? x : x.name))],
-    }
-  }
-  return { scheduledVacation, rdof, sick24: [], kelly: [], sickPartial: [], miscLeave: [], timeSwap: [], lightDuty: [], otLeave: [] }
+function makeManualLeaveSet(manualLeave) {
+  return new Set(
+    manualLeave
+      .split(/\n|,/)
+      .map((x) => x.trim().toUpperCase())
+      .filter(Boolean)
+  );
 }
 
-function buildProjectedShiftPeople(dateStr, shift, offLists) {
-  const offNames = new Set([...offLists.scheduledVacation, ...offLists.rdof, ...offLists.sick24].map(normalizeName))
-  return (otDataset.people_by_shift?.[shift] || []).filter((p) => !offNames.has(normalizeName(p.name)))
+function autoStaff(model, rawPeople, shift, kelly, manualLeave) {
+  const manualLeaveSet = makeManualLeaveSet(manualLeave);
+  const people = rawPeople.map(normalizePerson);
+  const used = new Set();
+  const board = {};
+
+  const activePeople = people.filter(
+    (p) => p.shift === shift && Number(p.kd) !== Number(kelly) && !manualLeaveSet.has(p.name.toUpperCase())
+  );
+
+  ALL_UNITS.forEach((unit) => {
+    const seats = model[unit] || [];
+    const assignedToUnit = activePeople.filter((p) => p.assignment === unit);
+
+    const rows = seats.map((seat) => {
+      const candidates = assignedToUnit
+        .filter((p) => !used.has(personKey(p)) && canFillSeat(p, seat))
+        .sort((a, b) => scoreSeatFit(b, seat, unit) - scoreSeatFit(a, seat, unit));
+      const pick = candidates[0] || null;
+      if (pick) used.add(personKey(pick));
+      return { ...seat, assigned: pick };
+    });
+
+    const extras = assignedToUnit.filter((p) => !used.has(personKey(p)));
+    extras.forEach((p) => used.add(personKey(p)));
+    board[unit] = { unit, rows, extras };
+  });
+
+  const floaters = activePeople.filter((p) => {
+    const key = personKey(p);
+    return !used.has(key) || !ALL_UNITS.includes(p.assignment);
+  });
+
+  return { board, floaters, activePeople };
 }
 
-function candidateEligibility(person, position) {
-  const reasons = []
-  const exact = person.rank === position.rankRequired
-  if (!exact) {
-    const alt = position.alternateRankAllowed
-    if (alt && person.rank === alt) {
-      if (position.alternateRankCondition && position.alternateRankCondition !== 'No special qualification required') {
-        const m = String(position.alternateRankCondition).match(/([A-Z_]+)\s*=\s*YES/)
-        if (m && !person.skills.includes(m[1])) reasons.push(`Missing ${m[1]}`)
-      }
-    } else {
-      reasons.push(`Requires ${position.rankRequired}${alt ? ` or ${alt}` : ''}`)
-    }
-  }
-  for (const skill of position.requiredSkills) {
-    if (position.label === 'Engineer' && person.rank === 'Engineer') continue
-    if (!person.skills.includes(skill)) reasons.push(`Missing ${skill}`)
-  }
-  return { ok: reasons.length === 0, reasons }
-}
-
-function comparePriority(a, b) {
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if ((a[i] ?? 0) < (b[i] ?? 0)) return -1
-    if ((a[i] ?? 0) > (b[i] ?? 0)) return 1
-  }
-  return 0
-}
-
-function personScoreForPosition(person, position, unit) {
-  let score = 100
-  if (person.unit && person.unit.replace(/^0+/, '') === unit.replace(/^0+/, '')) score -= 40
-  if (person.rank === position.rankRequired) score -= 25
-  else if (position.rankRequired === 'Lieutenant' && person.rank === 'Engineer') score -= 12
-  else if (position.rankRequired === 'Engineer' && person.rank === 'Firefighter' && person.skills.includes('RELIEF_DRIVER')) score -= 10
-  if (position.rankRequired === 'Lieutenant' && person.rank === 'Engineer' && person.skills.includes('PROMOTIONAL_LIST')) score -= 5
-  if (position.label !== 'Lieutenant' && person.skills.includes('PARAMEDIC')) score -= 4
-  if (position.label === 'Lieutenant' && person.skills.includes('PARAMEDIC')) score += 3
-  score += (person.ot_hours_total || 0) / 100
-  score += (person.refusals || 0) * 0.25
-  return score
-}
-
-function autoStaffUnits(model, shiftPeople, districtConfig) {
-  const available = [...shiftPeople]
-  const used = new Set()
-  const assignments = {}
-  const getCandidates = (unit, position) =>
-    available
-      .filter((p) => !used.has(p.employee_id))
-      .map((person) => ({ person, eligibility: candidateEligibility(person, position) }))
-      .filter((row) => row.eligibility.ok)
-      .sort((a, b) => {
-        const sA = personScoreForPosition(a.person, position, unit)
-        const sB = personScoreForPosition(b.person, position, unit)
-        if (sA !== sB) return sA - sB
-        return comparePriority([a.person.ot_hours_total || 0, a.person.refusals || 0, a.person.name], [b.person.ot_hours_total || 0, b.person.refusals || 0, b.person.name])
-      })
-      .map((row) => row.person)
-
-  for (const district of Object.keys(districtConfig)) {
-    for (const unit of districtConfig[district]) {
-      const positions = model.positionMap[unit] || []
-      assignments[unit] = []
-      for (const position of positions) {
-        const candidates = getCandidates(unit, position)
-        const picked = candidates[0] || null
-        if (picked) used.add(picked.employee_id)
-        assignments[unit].push({
-          position: position.label,
-          rank: position.rankRequired,
-          notes: position.notes,
-          assigned: picked ? {
-            name: picked.name,
-            rank: picked.rank,
-            status: ['PROJECTED'],
-            skills: picked.skills,
-            unit: picked.unit || '',
-            ot_hours_total: picked.ot_hours_total || 0,
-            refusals: picked.refusals || 0,
-          } : null
-        })
-      }
-    }
-  }
-  return assignments
-}
-
-function getSpecialSkills(skills) {
-  const flags = ['HAZMAT_TEAM','TRT_TEAM','DIVE_TEAM','STRUCTURAL_COLLAPSE_TEAM','TOWER_CERTIFIED','TOWER_RELIEF_DRIVER','RELIEF_DRIVER','PARAMEDIC','SURFACE_WATER_SWIMMER','WOODS_TRUCK']
-  return (skills || []).filter((s) => flags.includes(s))
-}
-
-function toneForStatus(s) {
-  const str = String(s || '')
-  if (str.includes('OT')) return 'warning'
-  if (str.includes('TS')) return 'info'
-  if (str.includes('SICK')) return 'danger'
-  if (str.includes('PROJECTED')) return 'default'
-  return 'success'
-}
-
-function Badge({ children, tone = 'default' }) {
-  return <span className={`badge badge-${tone}`}>{children}</span>
-}
-
-function Tile({ label, value, sublabel }) {
-  return <div className="tile"><div className="tile-label">{label}</div><div className="tile-value">{value}</div>{sublabel ? <div className="tile-sub">{sublabel}</div> : null}</div>
-}
-
-function UnitHeader({ unit, rule }) {
+function CredentialBadges({ person }) {
+  if (!person) return null;
+  const codes = getCredentialCodes(person);
+  if (!codes.length) return null;
   return (
-    <div className="unit-header-rule">
-      <div className="unit-rule-line"><strong>{rule?.unitType || ''}</strong>{rule?.staffingPattern ? ` • ${rule.staffingPattern}` : ''}</div>
-      <div className="unit-rule-line">
-        {rule?.specialTeamType && rule.specialTeamType !== 'None' ? `Special Team: ${rule.specialTeamType}${rule.specialTeamMinimum ? ` (min ${rule.specialTeamMinimum})` : ''}` : 'No special team requirement'}
-      </div>
-      <div className="unit-rule-line">
-        {rule?.paramedicMinimum ? `Medic rule: ${rule.paramedicMinimum} minimum` : 'No unit medic minimum'}
-      </div>
+    <div className="credential-row">
+      {codes.map((code, idx) => (
+        <span key={`${person.name}-${code}-${idx}`} className="cred-badge">{code}</span>
+      ))}
     </div>
-  )
+  );
 }
 
-function UnitCard({ unit, rows, rule, projected = false }) {
+function PersonChip({ person, draggable = false, onDragStart, onClick }) {
+  if (!person) return <span className="vacant-text">Vacant</span>;
+
   return (
-    <div className="unit-card">
-      <div className="unit-head">
+    <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick?.(person);
+      }}
+      className={`person-chip ${isParamedic(person) ? "medic" : ""}`}
+      title="Click to edit unit or pay code"
+    >
+      <div className="person-chip-main">
+        <strong>{person.name}</strong>
+        <span>{person.rank}</span>
+      </div>
+
+      <div className="person-chip-subline">
+        <span>{person.assignment || "No Unit"}</span>
+        {person.payCode ? <span className="pay-code-pill">{person.payCode}</span> : null}
+      </div>
+
+      <CredentialBadges person={person} />
+    </div>
+  );
+}
+function UnitCard({ unit, unitData, onDragStart, onDrop, onPersonClick }) {
+  const rows = unitData?.rows || [];
+  const extras = unitData?.extras || [];
+  const vacantCount = rows.filter((r) => !r.assigned).length;
+  const medicCount = [...rows.map((r) => r.assigned), ...extras].filter(Boolean).filter(isParamedic).length;
+  const status = vacantCount > 0 ? "open" : extras.length > 0 ? "extra" : "covered";
+
+  return (
+    <div className={`unit-card ${status}`}>
+      <div className="unit-card-header">
         <div>
-          <div className="unit-name">{unit}</div>
-          <div className="unit-meta">{projected ? 'Estimated roster' : 'Roster snapshot'}</div>
+          <h3>{unit}</h3>
+          <p>{rows.length} seats • {medicCount} PM</p>
         </div>
-        <div>{projected ? <Badge>Projected</Badge> : <Badge tone="success">Live roster</Badge>}</div>
+        <span className={`status-pill ${status}`}>{status === "covered" ? "Covered" : status === "extra" ? `+${extras.length}` : `${vacantCount} open`}</span>
       </div>
 
-      <UnitHeader unit={unit} rule={rule} />
+      <div className="slot-list">
+        {rows.map((row, index) => (
+          <div key={`${unit}-${index}`} className="slot-row" onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(unit, index, "seat")}>
+            <div className="slot-label">{row.position}</div>
+            <PersonChip
+              person={row.assigned}
+              draggable={Boolean(row.assigned)}
+              onDragStart={() => onDragStart({ unit, index, type: "seat" })}
+              onClick={onPersonClick}
+            />
+          </div>
+        ))}
+      </div>
 
-      <div className="position-stack">
-        {rows.map((row, idx) => {
-          const person = row.assigned || row
-          const statuses = Array.isArray(person?.status) ? person.status : (person?.status ? [person.status] : [])
-          const special = getSpecialSkills(person?.skills)
-          return (
-            <div className="position-row" key={`${unit}-${idx}-${row.position || row.label || idx}`}>
-              <div className="position-left">
-                <div className="position-label">{row.position || row.label}</div>
-                <div className="position-rank">{row.rank || person?.rank || ''}</div>
-              </div>
-              <div className="position-right">
-                {person ? (
-                  <>
-                    <div className="assigned-name">{person.name || 'Vacant'}</div>
-                    <div className="assigned-meta">{person.rank || ''}{person.unit ? ` • ${person.unit}` : ''}</div>
-                    <div className="skill-wrap compact">
-                      {statuses.filter(Boolean).map((s) => <Badge key={s} tone={toneForStatus(s)}>{s}</Badge>)}
-                    </div>
-                    {special.length ? <div className="skill-wrap compact">{special.map((s) => <Badge key={s} tone="info">{s}</Badge>)}</div> : null}
-                  </>
-                ) : <div className="vacant">Vacant</div>}
-              </div>
-            </div>
-          )
-        })}
+      <div className="extra-zone" onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(unit, null, "extra")}>
+        <div className="extra-zone-title">Extra assigned to {unit}</div>
+        {extras.length ? extras.map((person, index) => (
+          <PersonChip
+            key={`${unit}-extra-${personKey(person)}-${index}`}
+            person={person}
+            draggable
+            onDragStart={() => onDragStart({ unit, index, type: "extra" })}
+            onClick={onPersonClick}
+          />
+        )) : <div className="empty-extra">Drop extra personnel here</div>}
       </div>
     </div>
-  )
+  );
 }
 
-function ListCard({ title, items, tone = 'default' }) {
+function FloatersPanel({ floaters, onDragStart, onDrop, onPersonClick }) {
   return (
-    <div className="list-card">
-      <div className="list-title">{title}</div>
-      <div className="list-count">{items.length}</div>
-      <div className="list-items">
-        {items.length ? items.slice(0, 12).map((item) => <Badge key={item} tone={tone}>{item}</Badge>) : <span className="muted">None</span>}
+    <aside className="floaters-panel" onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop("FLOATERS", null, "floater")}>
+      <div className="floaters-header"><h2>Floaters / Unassigned</h2><span>{floaters.length}</span></div>
+      <p className="panel-note">Personnel not assigned to a modeled unit, or manually moved here.</p>
+      <div className="floater-list">
+        {floaters.length ? floaters.map((person, index) => (
+          <PersonChip
+            key={`floater-${personKey(person)}-${index}`}
+            person={person}
+            draggable
+            onDragStart={() => onDragStart({ unit: "FLOATERS", index, type: "floater" })}
+            onClick={onPersonClick}
+          />
+        )) : <div className="empty-extra">No floaters</div>}
+      </div>
+    </aside>
+  );
+}
+
+function LeaveList({ title, people, tone = "gray", onPersonClick }) {
+  return (
+    <div className={`leave-list ${tone}`}>
+      <div className="leave-list-header">
+        <h3>{title}</h3>
+        <span>{people.length}</span>
+      </div>
+      <div className="leave-list-body">
+        {people.length ? people.slice(0, 100).map((person) => (
+          <div key={`${title}-${personKey(person)}`} className="leave-person-row" onClick={() => onPersonClick(person)}>
+            <div>
+              <strong>{person.name}</strong>
+              <p>{person.rank} • {person.assignment || "No assignment"} • {person.shift || "?"} shift • KD {person.kd || "?"}</p>
+            </div>
+            <CredentialBadges person={person} />
+          </div>
+        )) : <div className="empty-extra">None listed</div>}
       </div>
     </div>
-  )
+  );
+}
+
+function EditPersonModal({ person, setPerson, onSave, onCancel }) {
+  if (!person) return null;
+
+  return (
+    <div className="edit-modal-backdrop" onClick={onCancel}>
+      <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Edit Personnel</h2>
+
+        <div className="edit-person-header">
+          <strong>{person.name}</strong>
+          <span>{person.rank} • {person.shift || "?"} shift • KD {person.kd || "?"}</span>
+        </div>
+
+        <label>
+          Assigned Unit
+          <select
+            value={person.assignment || ""}
+            onChange={(e) => setPerson({ ...person, assignment: e.target.value })}
+          >
+            <option value="">No Unit / Floater</option>
+            {ALL_UNITS.map((unit) => (
+              <option key={unit} value={unit}>{unit}</option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Pay Code
+          <select
+            value={person.payCode || ""}
+            onChange={(e) => setPerson({ ...person, payCode: e.target.value })}
+          >
+            {PAY_CODES.map((code) => (
+              <option key={code || "blank"} value={code}>{code || "None"}</option>
+            ))}
+          </select>
+        </label>
+
+        <div className="edit-modal-actions">
+          <button onClick={onCancel}>Cancel</button>
+          <button className="primary" onClick={onSave}>Save Changes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function LeaveChipGroup({ title, people, onDragStart, onPersonClick }) {
+  return (
+    <div className="leave-chip-group">
+      <div className="leave-chip-header">
+        <h3>{title}</h3>
+        <span>{people.length}</span>
+      </div>
+
+      <div className="leave-chip-list">
+        {people.length ? (
+          people.map((person, index) => (
+            <PersonChip
+              key={`${title}-${personKey(person)}-${index}`}
+              person={person}
+              draggable
+              onDragStart={() =>
+                onDragStart({
+                  unit: "LEAVE",
+                  index,
+                  type: "leave",
+                  person,
+                })
+              }
+              onClick={onPersonClick}
+            />
+          ))
+        ) : (
+          <div className="empty-extra">None</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
-  const model = useMemo(() => buildModel(), [])
-  const [dateStr, setDateStr] = useState(SNAPSHOT_DATE)
-  const [selectedDistrict, setSelectedDistrict] = useState('D1')
-  const { shift, kelly } = useMemo(() => computeShiftKelly(dateStr), [dateStr])
-  const isSnapshotDate = dateStr === SNAPSHOT_DATE
-  const offLists = useMemo(() => buildOffLists(dateStr, shift), [dateStr, shift])
-  const projectedPeople = useMemo(() => buildProjectedShiftPeople(dateStr, shift, kelly, offLists), [dateStr, shift, kelly, offLists])
-  const projectedAssignments = useMemo(() => autoStaffUnits(model, projectedPeople, DISTRICTS), [model, projectedPeople])
-  const districtUnits = DISTRICTS[selectedDistrict] || []
+  const model = useMemo(() => buildModel(), []);
+  const [date, setDate] = useState(SNAPSHOT_DATE);
+  const [people, setPeople] = useState([]);
+  const [fileStatus, setFileStatus] = useState("No roster loaded");
+  const [board, setBoard] = useState({});
+  const [floaters, setFloaters] = useState([]);
+  const [drag, setDrag] = useState(null);
+  const [search, setSearch] = useState("");
+  const [manualLeave, setManualLeave] = useState("");
+  const [showLeavePanel, setShowLeavePanel] = useState(true);
+  const [editingPerson, setEditingPerson] = useState(null);
 
-  let visibleVacancies = 0
-  if (!isSnapshotDate) {
-    for (const unit of districtUnits) visibleVacancies += (projectedAssignments[unit] || []).filter((r) => !r.assigned).length
+  const { shift, kelly } = computeShiftKelly(date);
+
+  const leaveGroups = useMemo(() => {
+    const normalized = people.map(normalizePerson);
+    const manualLeaveSet = makeManualLeaveSet(manualLeave);
+    return {
+      manualLeave: normalized.filter((p) => manualLeaveSet.has(p.name.toUpperCase())),
+      kellyDay: normalized.filter((p) => p.shift === shift && Number(p.kd) === Number(kelly)),
+      offShift: normalized.filter((p) => p.shift && p.shift !== shift),
+      noAssignment: normalized.filter((p) => !p.assignment),
+      activeOnShift: normalized.filter((p) => p.shift === shift && Number(p.kd) !== Number(kelly) && !manualLeaveSet.has(p.name.toUpperCase())),
+    };
+  }, [people, shift, kelly, manualLeave]);
+
+  const totals = useMemo(() => {
+    const units = Object.values(board);
+    const seats = units.flatMap((u) => u.rows || []);
+    const extras = units.flatMap((u) => u.extras || []);
+    return {
+      personnel: people.length,
+      activeAssigned: seats.filter((s) => s.assigned).length + extras.length,
+      vacancies: seats.filter((s) => !s.assigned).length,
+      extras: extras.length,
+      floaters: floaters.length,
+      medics: [...seats.map((s) => s.assigned), ...extras, ...floaters].filter(Boolean).filter(isParamedic).length,
+      kellyLeave: leaveGroups.kellyDay.length,
+      manualLeave: leaveGroups.manualLeave.length,
+      offShift: leaveGroups.offShift.length,
+    };
+  }, [board, floaters, people.length, leaveGroups]);
+
+  async function loadBackendRoster() {
+    try {
+      const res = await fetch(`${API_BASE}/api/roster/current`);
+      const data = await res.json();
+      setPeople((data.people || []).map(normalizePerson));
+      setFileStatus(`${data.count ?? data.people?.length ?? 0} personnel loaded`);
+    } catch (err) {
+      console.error(err);
+      setFileStatus("Backend not reachable");
+    }
   }
+
+  async function uploadRoster(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch(`${API_BASE}/api/roster/upload`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setFileStatus(`Upload failed: ${data.detail || data.error || "Unknown error"}`);
+        return;
+      }
+      setPeople((data.people || []).map(normalizePerson));
+      setFileStatus(`${data.count} people uploaded`);
+    } catch (err) {
+      console.error(err);
+      setFileStatus("Upload error");
+    }
+  }
+
+  useEffect(() => { loadBackendRoster(); }, []);
+
+  useEffect(() => {
+    const result = autoStaff(model, people, shift, kelly, manualLeave);
+    setBoard(result.board);
+    setFloaters(result.floaters);
+  }, [model, people, shift, kelly, manualLeave]);
+
+  function updatePersonEverywhere(updatedPerson) {
+    const normalized = normalizePerson(updatedPerson);
+    const key = personKey(normalized);
+
+    setPeople((prev) =>
+      prev.map((p) => (personKey(normalizePerson(p)) === key ? { ...p, ...normalized } : p))
+    );
+
+    setBoard((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      Object.values(copy).forEach((unitData) => {
+        unitData.rows?.forEach((row) => {
+          if (row.assigned && personKey(normalizePerson(row.assigned)) === key) {
+            row.assigned = { ...row.assigned, ...normalized };
+          }
+        });
+        unitData.extras = (unitData.extras || []).map((p) =>
+          personKey(normalizePerson(p)) === key ? { ...p, ...normalized } : p
+        );
+      });
+      return copy;
+    });
+
+    setFloaters((prev) =>
+      prev.map((p) => (personKey(normalizePerson(p)) === key ? { ...p, ...normalized } : p))
+    );
+  }
+
+  function drop(targetUnit, targetIndex, targetType) {
+    if (!drag) return;
+    const copy = JSON.parse(JSON.stringify(board));
+    const floaterCopy = [...floaters];
+    let draggedPerson = null;
+
+    if (drag.type === "seat") draggedPerson = copy[drag.unit]?.rows?.[drag.index]?.assigned || null;
+    if (drag.type === "extra") draggedPerson = copy[drag.unit]?.extras?.[drag.index] || null;
+    if (drag.type === "floater") draggedPerson = floaterCopy[drag.index] || null;
+    if (!draggedPerson) return;
+
+    if (drag.type === "seat") copy[drag.unit].rows[drag.index].assigned = null;
+    if (drag.type === "extra") copy[drag.unit].extras.splice(drag.index, 1);
+    if (drag.type === "floater") floaterCopy.splice(drag.index, 1);
+
+    if (targetType === "seat") {
+      const existing = copy[targetUnit].rows[targetIndex].assigned;
+      copy[targetUnit].rows[targetIndex].assigned = draggedPerson;
+      if (existing) copy[targetUnit].extras.push(existing);
+    }
+    if (targetType === "extra") copy[targetUnit].extras.push(draggedPerson);
+    if (targetType === "floater") floaterCopy.push(draggedPerson);
+
+    setBoard(copy);
+    setFloaters(floaterCopy);
+    setDrag(null);
+  }
+
+  const filteredDistricts = Object.entries(DISTRICTS).map(([district, units]) => [
+    district,
+    units.filter((unit) => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      const unitData = board[unit];
+      const names = [
+        ...(unitData?.rows || []).map((r) => r.assigned?.name || ""),
+        ...(unitData?.extras || []).map((p) => p.name || ""),
+      ].join(" ").toLowerCase();
+      return unit.toLowerCase().includes(q) || names.includes(q);
+    }),
+  ]).filter(([, units]) => units.length);
 
   return (
     <div className="page-shell">
-      <header className="hero">
-        <div>
-          <h1>OFD Staffing Board</h1>
-          <p>
-            Live roster view on 2026-04-20 with special-team details added to each staffed seat. For any other date, the app creates an estimated roster from the staffing build, shift calendar, and scheduled vacation file.
-          </p>
-        </div>
-        <div className="hero-badges">
-          <Badge tone="success">{dateStr}</Badge>
-          <Badge tone="info">{shift}-Shift / Kelly {kelly}</Badge>
-          <Badge>{isSnapshotDate ? 'Live snapshot mode' : 'Estimated future roster mode'}</Badge>
+      <header className="app-header">
+        <div><h1>OFD Staffing</h1><p>{fileStatus}</p></div>
+        <div className="control-bar">
+          <label className="upload-button">Upload Excel<input type="file" accept=".xlsx,.xls" onChange={uploadRoster} /></label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <button onClick={loadBackendRoster}>Reload</button>
         </div>
       </header>
 
-      <section className="panel">
-        <div className="toolbar">
-          <div className="field">
-            <label>Date</label>
-            <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
-          </div>
-          <div className="field grow">
-            <label>District</label>
-            <div className="district-tabs">
-              {Object.keys(DISTRICTS).map((district) => (
-                <button key={district} className={`district-tab ${selectedDistrict === district ? 'active' : ''}`} onClick={() => setSelectedDistrict(district)}>
-                  {district}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="tile-grid">
-          <Tile label="On-duty shift" value={shift} sublabel={`Kelly group ${kelly}`} />
-          <Tile label="People available for estimate" value={projectedPeople.length} />
-          <Tile label="Scheduled vacation" value={offLists.scheduledVacation.length} />
-          <Tile label="RDO floating" value={offLists.rdof.length} />
-          <Tile label="District vacancies" value={visibleVacancies} sublabel={isSnapshotDate ? 'Live roster date' : 'Estimated from build'} />
-        </div>
+      <section className="summary-strip">
+        <div><span>{shift}</span><label>Shift</label></div>
+        <div><span>{kelly}</span><label>Kelly Day</label></div>
+        <div><span>{totals.activeAssigned}</span><label>Assigned</label></div>
+        <div><span>{totals.vacancies}</span><label>Vacancies</label></div>
+        <div><span>{totals.extras}</span><label>Extras</label></div>
+        <div><span>{totals.floaters}</span><label>Floaters</label></div>
+        <div><span>{totals.medics}</span><label>Paramedics</label></div>
+        <div><span>{totals.kellyLeave}</span><label>KD Leave</label></div>
+        <div><span>{totals.manualLeave}</span><label>Manual Leave</label></div>
       </section>
 
-      <section className="panel">
-        <div className="section-head">
-          <h2>Availability overlays</h2>
-          <p>Scheduled vacation and RDOF apply for future estimates. Snapshot-only lists come from the uploaded 4/20/2026 roster.</p>
-        </div>
-        <div className="off-grid">
-          <ListCard title="Scheduled Vacation" items={offLists.scheduledVacation} tone="danger" />
-          <ListCard title="RDO Floating" items={offLists.rdof} tone="warning" />
-          <ListCard title="Kelly Day (snapshot only)" items={offLists.kelly} tone="info" />
-          <ListCard title="Sick 24 (snapshot only)" items={offLists.sick24} tone="danger" />
-          <ListCard title="Light Duty (snapshot only)" items={offLists.lightDuty} />
-          <ListCard title="OT Leave (snapshot only)" items={offLists.otLeave} tone="warning" />
-        </div>
-      </section>
+      <div className="search-row">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search unit or personnel..." />
+        <button className="toggle-leave-button" onClick={() => setShowLeavePanel((v) => !v)}>{showLeavePanel ? "Hide Leave Lists" : "Show Leave Lists"}</button>
+      </div>
 
-      {!isSnapshotDate ? (
-        <section className="panel notice-panel">
-          <div className="section-head">
-            <h2>Estimate assumptions</h2>
-            <p>
-              Future dates are estimated from the staffing build and scheduled vacation file. Kelly-group membership by employee is not yet modeled beyond the uploaded sample snapshot, so future Kelly-day removals are not employee-specific yet.
-            </p>
+      {showLeavePanel && (
+        <section className="leave-panel">
+          <div className="leave-editor">
+            <h2>Leave / Availability Lists</h2>
+            <p>Enter vacation, sick, training, ORSA, military leave, light duty, or other leave manually for now. Names must match the uploaded roster.</p>
+            <textarea value={manualLeave} onChange={(e) => setManualLeave(e.target.value)} placeholder={`Example:\nBASSANI, AL\nJELENEK, ANTHONY`} />
           </div>
+          <LeaveChipGroup title="Manual Leave / Unavailable" people={leaveGroups.manualLeave} onDragStart={setDrag} onPersonClick={setEditingPerson} />
+          <LeaveChipGroup title={`Kelly Day ${kelly}`} people={leaveGroups.kellyDay} onDragStart={setDrag} onPersonClick={setEditingPerson} />
+          <LeaveChipGroup title="Off Shift" people={leaveGroups.offShift} onDragStart={setDrag} onPersonClick={setEditingPerson} />
+          <LeaveChipGroup title="No Assignment" people={leaveGroups.noAssignment} onDragStart={setDrag} onPersonClick={setEditingPerson} />
         </section>
-      ) : null}
+      )}
 
-      <section className="panel">
-        <div className="section-head">
-          <h2>{selectedDistrict} units</h2>
-          <p>{isSnapshotDate ? 'Exact mapped positions from the uploaded sample roster, with special-team flags shown on each member.' : 'Estimated staffing from the build and vacation calendar for the selected date.'}</p>
+      <main className="layout-grid">
+        <div className="district-board">
+          {filteredDistricts.map(([district, units]) => (
+            <section key={district} className="district-section">
+              <h2>{district}</h2>
+              <div className="unit-grid">
+                {units.map((unit) => (
+                  <UnitCard
+                    key={unit}
+                    unit={unit}
+                    unitData={board[unit]}
+                    onDragStart={setDrag}
+                    onDrop={drop}
+                    onPersonClick={setEditingPerson}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
+        <FloatersPanel floaters={floaters} onDragStart={setDrag} onDrop={drop} onPersonClick={setEditingPerson} />
+      </main>
 
-        <div className="unit-grid">
-          {districtUnits.map((unit) => {
-            const rows = isSnapshotDate ? (rosterSnapshot.districts?.[selectedDistrict]?.[unit] || []) : (projectedAssignments[unit] || [])
-            return <UnitCard key={unit} unit={unit} rows={rows} rule={model.unitRules[unit]} projected={!isSnapshotDate} />
-          })}
-        </div>
-      </section>
+      <EditPersonModal
+        person={editingPerson}
+        setPerson={setEditingPerson}
+        onCancel={() => setEditingPerson(null)}
+        onSave={() => {
+          updatePersonEverywhere({ ...editingPerson, assignment: normalizeUnit(editingPerson.assignment) });
+          setEditingPerson(null);
+        }}
+      />
     </div>
-  )
+  );
 }
