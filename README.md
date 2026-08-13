@@ -1,6 +1,6 @@
 # OFD TeleStaff Rules Lab
 
-This branch of the OFD staffing model is a **synthetic test environment** for the proposed TeleStaff overtime-hiring workflow. It models Stations 1–6, three shifts, Day Staff, concurrent vacancies, electronic offers, opportunity charging, proximity, and controlled mandatory recommendations.
+This branch of the OFD staffing model is a **synthetic test environment** for the proposed TeleStaff overtime-hiring workflow. It models Stations 1–6, three shifts, Day Staff, concurrent vacancies, electronic offers, opportunity charging, proximity, personnel transfers, payroll-code mapping, and controlled mandatory recommendations.
 
 No real employee names are used in the simulator.
 
@@ -8,11 +8,15 @@ No real employee names are used in the simulator.
 
 1. Open the Roster Board and click a position to create a vacancy, or load the 18-vacancy scenario.
 2. Use the Hiring Desk to inspect the Fill by Rules queue.
-3. Send a simulated offer and record Accepted, Refused, No Contact — Expired, or Failed Delivery.
-4. Review opportunity balances and the audit trail.
-5. Mandatory overtime becomes actionable only after voluntary candidates have been exhausted and is recommendation-only until staff approval.
+3. Send a simulated offer, open the Notifications tab, and respond to the exact sample employee text with ACCEPT, DECLINE, Offer Expired, or Failed Delivery.
+4. Use Personnel & Transfers to test a transfer, promotion, or Kelly Day change. The prior assignment remains the next-shift proximity source and overtime history is preserved.
+5. Use Pay Codes to review the discussed TeleStaff-to-Workday crosswalk and create test export entries.
+6. Review opportunity balances and the audit trail.
+7. Mandatory overtime becomes actionable only after voluntary candidates have been exhausted and is recommendation-only until staff approval.
 
 The working voluntary order is Regular KD → Floating KD → KDS not working → Day Staff → off-going/on-coming → mandatory. Opportunity counts, not hours worked, are the fairness measure; in-grade seniority breaks ties.
+
+The pay-code catalog includes Regular Time, Overtime, Vacation, Travel Pay 1/2, Transport Pay, all four WHC levels, both time-swap records, DOI, RDO/RDOF, and both Kelly Day Swap records. Unresolved Workday mappings remain labeled `TBD` so the lab does not present a proposed treatment as final policy.
 
 ## Run and validate
 

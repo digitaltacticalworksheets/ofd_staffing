@@ -9,13 +9,27 @@ import {
   describeCandidate, firstActionableCandidate, groupCandidateQueue,
   offerWindowMinutes,
 } from "./staffingEngine.js";
+import {
+  NotificationsView,
+  PayCodesView,
+  PersonnelView as WorkforcePersonnelView,
+  TransferModal,
+} from "./WorkforceViews.jsx";
+import {
+  applyPersonnelMove,
+  buildMandatoryNotification,
+  buildOfferNotification,
+  createPayEntry,
+} from "./workforceConfig.js";
 
 const TEST_DATE = "2026-08-14";
-const STORAGE_KEY = "ofd-tele-staff-test-v2";
+const STORAGE_KEY = "ofd-tele-staff-test-v3";
 const NAV_ITEMS = [
   { id: "roster", label: "Roster Board", icon: "▦" },
   { id: "hiring", label: "Hiring Desk", icon: "⇄" },
-  { id: "personnel", label: "Test Personnel", icon: "◎" },
+  { id: "notifications", label: "Notifications", icon: "✉" },
+  { id: "personnel", label: "Personnel & Transfers", icon: "◎" },
+  { id: "paycodes", label: "Pay Codes", icon: "$" },
   { id: "rules", label: "Rules & Audit", icon: "☷" },
 ];
 const STAGES = [
@@ -42,6 +56,24 @@ const OPEN_DECISIONS = [
 ];
 
 const deepClone = (value) => JSON.parse(JSON.stringify(value));
+const freshTestState = () => ({
+  profiles: deepClone(TEST_PROFILES),
+  vacancies: [],
+  audit: [],
+  transfers: [],
+  payEntries: [],
+  notifications: [],
+});
+const normalizeTestState = (saved) => ({
+  ...freshTestState(),
+  ...saved,
+  profiles: saved?.profiles?.length ? saved.profiles : deepClone(TEST_PROFILES),
+  vacancies: saved?.vacancies || [],
+  audit: saved?.audit || [],
+  transfers: saved?.transfers || [],
+  payEntries: saved?.payEntries || [],
+  notifications: saved?.notifications || [],
+});
 const formatRank = (rank) => ({ FF: "Firefighter", ENG: "Engineer", LT: "Lieutenant", DC: "District Chief", AC: "Assistant Chief" }[rank] || rank);
 const shortName = (name = "") => name.replace("TEST — ", "");
 const timestamp = () => new Date().toISOString();
@@ -53,9 +85,9 @@ function usePersistentTestState() {
   const [state, setState] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeTestState(JSON.parse(saved));
     } catch (error) { console.warn("Unable to read test state", error); }
-    return { profiles: deepClone(TEST_PROFILES), vacancies: [], audit: [] };
+    return freshTestState();
   });
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -186,13 +218,6 @@ function HiringDesk({ state, selectedVacancyId, setSelectedVacancyId, onSetOffer
   return <div className="hiring-layout"><VacancyList vacancies={state.vacancies} selectedId={selected.id} setSelectedId={setSelectedVacancyId} /><div className="hiring-main"><section className="vacancy-hero"><div className="vacancy-identity"><div className="vacancy-unit-badge">{selected.unit}</div><div><span className="eyebrow">TEST VACANCY</span><h2>{formatRank(selected.rank)} · Station {selected.station}</h2><p>{selected.reason} · {selected.durationHours} hours · {displayDate(selected.date)}</p></div></div><div className="stage-control"><label>Active hiring stage<select value={selected.stage} disabled={selected.status === "FILLED" || selected.currentOffer} onChange={(e) => onStageChange(selected.id, e.target.value)}>{STAGES.map((item) => <option key={item.id} value={item.id}>{item.time} — {item.label}</option>)}</select></label><span>{stage.shiftPool} shift pool · {offerWindowMinutes(stage.time)} min test window</span></div><Badge tone={selected.status === "FILLED" ? "success" : "danger"}>{selected.status}</Badge></section>{selected.status === "FILLED" ? <div className="filled-banner"><span>✓</span><div><strong>Position filled</strong><p>{shortName(assigned?.name || "Assigned test profile")}</p></div></div> : <><TierRail queue={queue} activeTier={activeTier} /><CurrentOfferCard vacancy={selected} candidate={currentCandidate} profile={currentProfile} onOutcome={(outcome) => onOutcome(selected.id, outcome)} onBypass={() => onBypass(selected.id)} />{!selected.currentOffer && next ? <section className="next-candidate-card"><div><span className="eyebrow">NEXT BY RULE</span><h3>{shortName(next.person.name)}</h3><p>{TIER_LABELS[next.tier]} · {describeCandidate(next)}</p></div><button className={`button ${next.tier === "MANDATORY" ? "button-danger" : "button-primary"}`} onClick={() => onSetOffer(selected.id, next)}>{next.tier === "MANDATORY" ? "Create Mandatory Recommendation" : "Send Simulated Offer"}</button></section> : null}<section className="candidate-panel"><div className="panel-header"><div><span className="eyebrow">FILL BY RULES</span><h3>Ordered candidate queue</h3></div><span className="panel-note">Only the next candidate is actionable; Signup never changes priority.</span></div><CandidateTable queue={queue} currentOffer={selected.currentOffer} actionableCandidate={next} onSelectOffer={(candidate) => onSetOffer(selected.id, candidate)} /></section></>}</div></div>;
 }
 
-function PersonnelView({ profiles }) {
-  const [search, setSearch] = useState(""); const [shift, setShift] = useState("ALL"); const [rank, setRank] = useState("ALL");
-  const filtered = profiles.filter((p) => (!search || p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase())) && (shift === "ALL" || p.shift === shift) && (rank === "ALL" || p.rank === rank));
-  const rankCounts = ["FF", "ENG", "LT", "DC", "AC"].map((r) => [r, profiles.filter((p) => p.rank === r).length]);
-  return <><div className="section-heading split-heading"><div><span className="eyebrow">SYNTHETIC DIRECTORY</span><h2>{profiles.length} test personnel profiles</h2><p>Three shift complements plus a separate Day Staff pool. Every record is test data.</p></div><div className="rank-counts">{rankCounts.map(([r, count]) => <div key={r}><strong>{count}</strong><span>{r}</span></div>)}</div></div><div className="filter-bar"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search synthetic name or ID…" /><select value={shift} onChange={(e) => setShift(e.target.value)}><option value="ALL">All shifts</option>{[...SHIFTS, "DAY"].map((x) => <option key={x}>{x}</option>)}</select><select value={rank} onChange={(e) => setRank(e.target.value)}><option value="ALL">All ranks</option>{["FF", "ENG", "LT", "DC", "AC"].map((x) => <option key={x}>{x}</option>)}</select><Badge tone="blue">{filtered.length} shown</Badge></div><div className="personnel-table-wrap"><table className="personnel-table"><thead><tr><th>Profile</th><th>Assignment</th><th>Kelly</th><th>Qualifications</th><th>Opportunity balances</th><th>Mandatory</th></tr></thead><tbody>{filtered.map((p) => <tr key={p.id}><td><div className="candidate-name"><div className={`mini-rank rank-${p.rank.toLowerCase()}`}>{p.rank}</div><div><strong>{shortName(p.name)}</strong><span>{p.id}</span></div></div></td><td><strong>{p.shift} Shift</strong><span className="cell-subtext">{p.unit} · Station {p.station}</span></td><td>{p.kellyGroup ? `Group ${p.kellyGroup}` : "Day Staff"}</td><td><div className="qualification-list">{p.qualifications.length ? p.qualifications.map((q) => <Badge key={q}>{q}</Badge>) : "—"}</div></td><td><strong>KD {p.regularKdOpportunities}</strong><span className="cell-subtext">FKD {p.floatingKdOpportunities} · Other {p.voluntaryOpportunities}</span></td><td><strong>#{p.mandatoryOrder}</strong><span className="cell-subtext">{p.overtimeHours30} tracked hrs</span></td></tr>)}</tbody></table></div></>;
-}
-
 function RulesAuditView({ audit }) {
   return <><div className="section-heading"><span className="eyebrow">CONFIGURATION BASELINE</span><h2>Working rules and test controls</h2><p>These cards represent the current internal direction. Open decisions remain deliberately unresolved.</p></div><div className="rule-grid">{RULE_CARDS.map(([title, status, body]) => <article className="rule-card" key={title}><div><span className="rule-icon">✓</span><Badge tone={status === "Proposed rule" ? "warning" : status === "Controlled test" ? "danger" : "blue"}>{status}</Badge></div><h3>{title}</h3><p>{body}</p></article>)}</div><div className="rules-two-column"><section className="decision-panel"><div className="panel-header"><div><span className="eyebrow">INTERNAL CONFIRMATION</span><h3>Open decisions</h3></div><Badge tone="warning">{OPEN_DECISIONS.length}</Badge></div><ol>{OPEN_DECISIONS.map((d) => <li key={d}>{d}</li>)}</ol></section><section className="config-panel"><div className="panel-header"><div><span className="eyebrow">ACTIVE TEST VALUES</span><h3>Rule engine configuration</h3></div></div><dl><div><dt>Fairness</dt><dd>Charged opportunities</dd></div><div><dt>Tie-breaker</dt><dd>In-grade seniority</dd></div><div><dt>Exactly 12 hours</dt><dd>Not charged — pending decision</dd></div><div><dt>Day Staff lookback</dt><dd>{DEFAULT_RULE_CONFIG.dayStaffLookbackDays} days</dd></div><div><dt>Mandatory work limit</dt><dd>{DEFAULT_RULE_CONFIG.mandatoryHoursLimit} hours</dd></div><div><dt>Proximity source</dt><dd>Previous roster position</dd></div><div><dt>Mandatory mode</dt><dd>Recommendation only</dd></div></dl></section></div><section className="audit-panel"><div className="panel-header"><div><span className="eyebrow">SIMULATION LOG</span><h3>Offer and assignment audit</h3></div><Badge>{audit.length} events</Badge></div>{audit.length ? <div className="audit-list">{audit.slice().reverse().map((e) => <div className="audit-row" key={e.id}><time>{new Date(e.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time><Badge tone={e.outcome === "ACCEPTED" ? "success" : e.outcome === "EXPIRED" ? "warning" : e.outcome === "FAILED_DELIVERY" ? "danger" : "neutral"}>{e.outcome}</Badge><div><strong>{e.profileName ? shortName(e.profileName) : "System"}</strong><p>{e.message}</p></div><span>{e.vacancyLabel}</span></div>)}</div> : <EmptyState title="No hiring activity yet" body="Simulated offers, outcomes, bypasses, and assignments will appear here." />}</section></>;
 }
@@ -204,14 +229,176 @@ export default function App() {
   const [state, setState] = usePersistentTestState();
   const [selectedVacancyId, setSelectedVacancyId] = useState(state.vacancies[0]?.id || null);
   const [vacancyPerson, setVacancyPerson] = useState(null);
+  const [transferPerson, setTransferPerson] = useState(null);
   useEffect(() => setSelectedShift(computeShiftKelly(date).shift), [date]);
   const addAudit = (draft, details) => draft.audit.push({ id: `AUD-${Date.now()}-${draft.audit.length}`, at: timestamp(), ...details });
-  function loadScenario() { const vacancies = createSampleVacancies(state.profiles, date, 18); setState((current) => { const draft = { ...current, vacancies, audit: [] }; addAudit(draft, { outcome: "SCENARIO", message: `Loaded ${vacancies.length} independently processing test vacancies.`, vacancyLabel: `${computeShiftKelly(date).shift} Shift` }); return draft; }); setSelectedVacancyId(vacancies[0]?.id || null); setView("hiring"); }
-  function resetTestData() { if (!window.confirm("Reset all test profiles, vacancies, opportunity balances, and audit history?")) return; localStorage.removeItem(STORAGE_KEY); setState({ profiles: deepClone(TEST_PROFILES), vacancies: [], audit: [] }); setSelectedVacancyId(null); setView("roster"); }
-  function saveVacancy(vacancy) { setState((current) => ({ ...current, vacancies: [...current.vacancies, vacancy] })); setSelectedVacancyId(vacancy.id); setVacancyPerson(null); setView("hiring"); }
-  function changeStage(id, stageId) { const stage = STAGES.find((x) => x.id === stageId); setState((current) => ({ ...current, vacancies: current.vacancies.map((v) => v.id === id ? { ...v, stage: stageId, runTime: stage.time } : v) })); }
-  function setOffer(id, candidate) { setState((current) => { const draft = deepClone(current); const v = draft.vacancies.find((x) => x.id === id); if (!v || v.status !== "OPEN" || v.currentOffer) return current; v.currentOffer = { profileId: candidate.person.id, tier: candidate.tier, startedAt: timestamp(), windowMinutes: candidate.tier === "MANDATORY" ? null : offerWindowMinutes(v.runTime), candidate }; v.history.push({ at: timestamp(), action: candidate.tier === "MANDATORY" ? "MANDATORY_RECOMMENDED" : "OFFER_SENT", profileId: candidate.person.id, tier: candidate.tier }); addAudit(draft, { outcome: candidate.tier === "MANDATORY" ? "RECOMMENDED" : "OFFERED", profileName: candidate.person.name, message: `${TIER_LABELS[candidate.tier]} selected by Fill by Rules.`, vacancyLabel: `${v.unit} ${v.rank}` }); return draft; }); }
-  function recordOutcome(id, outcome) { setState((current) => { const draft = deepClone(current); const v = draft.vacancies.find((x) => x.id === id); if (!v?.currentOffer) return current; const i = draft.profiles.findIndex((p) => p.id === v.currentOffer.profileId); if (i < 0) return current; const p = draft.profiles[i]; const tier = v.currentOffer.tier; const chargesOpportunity = Number(v.durationHours) > 12 && tier !== "MANDATORY"; draft.profiles[i] = applyOfferOutcome(p, tier, outcome, v, draft.profiles); v.history.push({ at: timestamp(), action: outcome, profileId: p.id, tier }); if (outcome === "ACCEPTED") { v.status = "FILLED"; v.assignedProfileId = p.id; } else v.contactedIds.push(p.id); v.currentOffer = null; const chargeText = chargesOpportunity ? "one opportunity charged" : "no opportunity charged under the current short-offer test setting"; const messages = { ACCEPTED: tier === "MANDATORY" ? "Mandatory assignment approved; rotation moved to the bottom." : `Offer accepted; position filled and ${chargeText}.`, REFUSED: `Offer refused; ${chargeText} and vacancy advanced.`, EXPIRED: `Delivered offer expired; coded No Contact — Offer Expired, ${chargeText}, and vacancy advanced.`, FAILED_DELIVERY: "Delivery failed; no opportunity charged and vacancy advanced." }; addAudit(draft, { outcome, profileName: p.name, message: messages[outcome], vacancyLabel: `${v.unit} ${v.rank}` }); return draft; }); }
-  function recordBypass(id) { setState((current) => { const draft = deepClone(current); const v = draft.vacancies.find((x) => x.id === id); if (!v?.currentOffer) return current; const p = draft.profiles.find((x) => x.id === v.currentOffer.profileId); v.mandatoryBypassIds.push(p.id); v.history.push({ at: timestamp(), action: "MANDATORY_BYPASS", profileId: p.id, tier: "MANDATORY" }); v.currentOffer = null; addAudit(draft, { outcome: "BYPASS", profileName: p.name, message: "Mandatory candidate bypassed for this vacancy; rotation position unchanged.", vacancyLabel: `${v.unit} ${v.rank}` }); return draft; }); }
-  return <div className="app-shell"><AppHeader view={view} setView={setView} state={state} date={date} setDate={setDate} onLoadScenario={loadScenario} onReset={resetTestData} /><main className={`content-shell content-${view}`}>{view !== "hiring" ? <SummaryCards state={state} date={date} /> : null}{view === "roster" ? <RosterBoard state={state} date={date} selectedShift={selectedShift} setSelectedShift={setSelectedShift} onCreateVacancy={setVacancyPerson} onOpenHiring={() => setView("hiring")} /> : null}{view === "hiring" ? <HiringDesk state={state} selectedVacancyId={selectedVacancyId} setSelectedVacancyId={setSelectedVacancyId} onSetOffer={setOffer} onOutcome={recordOutcome} onBypass={recordBypass} onStageChange={changeStage} /> : null}{view === "personnel" ? <PersonnelView profiles={state.profiles} /> : null}{view === "rules" ? <RulesAuditView audit={state.audit} /> : null}</main><footer className="app-footer"><span>OFD TeleStaff Rules Lab · Internal discussion build</span><span>{TEST_ENVIRONMENT_SUMMARY.totalProfiles} synthetic profiles · Stations 1–6 · A/B/C Shifts + Day Staff</span></footer>{vacancyPerson ? <VacancyModal person={vacancyPerson} date={date} onClose={() => setVacancyPerson(null)} onSave={saveVacancy} /> : null}</div>;
+
+  function loadScenario() {
+    const vacancies = createSampleVacancies(state.profiles, date, 18);
+    setState((current) => {
+      const draft = { ...current, vacancies, audit: [] };
+      addAudit(draft, { outcome: "SCENARIO", message: `Loaded ${vacancies.length} independently processing test vacancies.`, vacancyLabel: `${computeShiftKelly(date).shift} Shift` });
+      return draft;
+    });
+    setSelectedVacancyId(vacancies[0]?.id || null);
+    setView("hiring");
+  }
+
+  function resetTestData() {
+    if (!window.confirm("Reset all test profiles, vacancies, transfers, pay entries, notifications, opportunity balances, and audit history?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    setState(freshTestState());
+    setSelectedVacancyId(null);
+    setView("roster");
+  }
+
+  function saveVacancy(vacancy) {
+    setState((current) => ({ ...current, vacancies: [...current.vacancies, vacancy] }));
+    setSelectedVacancyId(vacancy.id);
+    setVacancyPerson(null);
+    setView("hiring");
+  }
+
+  function changeStage(id, stageId) {
+    const stage = STAGES.find((item) => item.id === stageId);
+    setState((current) => ({
+      ...current,
+      vacancies: current.vacancies.map((vacancy) => vacancy.id === id ? { ...vacancy, stage: stageId, runTime: stage.time } : vacancy),
+    }));
+  }
+
+  function setOffer(id, candidate) {
+    setState((current) => {
+      const draft = deepClone(current);
+      const vacancy = draft.vacancies.find((item) => item.id === id);
+      if (!vacancy || vacancy.status !== "OPEN" || vacancy.currentOffer) return current;
+      const startedAt = timestamp();
+      vacancy.currentOffer = {
+        profileId: candidate.person.id,
+        tier: candidate.tier,
+        startedAt,
+        windowMinutes: candidate.tier === "MANDATORY" ? null : offerWindowMinutes(vacancy.runTime),
+        candidate,
+      };
+      if (candidate.tier !== "MANDATORY") {
+        const notification = buildOfferNotification(vacancy, candidate, startedAt);
+        vacancy.currentOffer.notificationId = notification.id;
+        draft.notifications.push(notification);
+      }
+      vacancy.history.push({ at: startedAt, action: candidate.tier === "MANDATORY" ? "MANDATORY_RECOMMENDED" : "OFFER_SENT", profileId: candidate.person.id, tier: candidate.tier });
+      addAudit(draft, {
+        outcome: candidate.tier === "MANDATORY" ? "RECOMMENDED" : "OFFERED",
+        profileName: candidate.person.name,
+        message: candidate.tier === "MANDATORY" ? `${TIER_LABELS[candidate.tier]} selected by Fill by Rules.` : `${TIER_LABELS[candidate.tier]} selected and test text delivered.`,
+        vacancyLabel: `${vacancy.unit} ${vacancy.rank}`,
+      });
+      return draft;
+    });
+  }
+
+  function recordOutcome(id, outcome) {
+    setState((current) => {
+      const draft = deepClone(current);
+      const vacancy = draft.vacancies.find((item) => item.id === id);
+      if (!vacancy?.currentOffer) return current;
+      const offer = vacancy.currentOffer;
+      const profileIndex = draft.profiles.findIndex((profile) => profile.id === offer.profileId);
+      if (profileIndex < 0) return current;
+      const profile = draft.profiles[profileIndex];
+      const tier = offer.tier;
+      const respondedAt = timestamp();
+      const chargesOpportunity = Number(vacancy.durationHours) > 12 && tier !== "MANDATORY";
+      draft.profiles[profileIndex] = applyOfferOutcome(profile, tier, outcome, vacancy, draft.profiles);
+      vacancy.history.push({ at: respondedAt, action: outcome, profileId: profile.id, tier });
+      if (offer.notificationId) {
+        const notification = draft.notifications.find((item) => item.id === offer.notificationId);
+        if (notification) {
+          notification.status = outcome;
+          notification.response = outcome === "ACCEPTED" ? "ACCEPT" : outcome === "REFUSED" ? "DECLINE" : outcome;
+          notification.respondedAt = respondedAt;
+        }
+      }
+      if (outcome === "ACCEPTED") {
+        vacancy.status = "FILLED";
+        vacancy.assignedProfileId = profile.id;
+        if (tier === "MANDATORY") draft.notifications.push(buildMandatoryNotification(vacancy, profile, respondedAt));
+      } else {
+        vacancy.contactedIds.push(profile.id);
+      }
+      vacancy.currentOffer = null;
+      const chargeText = chargesOpportunity ? "one opportunity charged" : "no opportunity charged under the current short-offer test setting";
+      const messages = {
+        ACCEPTED: tier === "MANDATORY" ? "Mandatory assignment approved; assignment notice created and rotation moved to the bottom." : `Employee replied ACCEPT; position filled and ${chargeText}.`,
+        REFUSED: `Employee replied DECLINE; ${chargeText} and vacancy advanced.`,
+        EXPIRED: `Delivered offer expired; coded No Contact — Offer Expired, ${chargeText}, and vacancy advanced.`,
+        FAILED_DELIVERY: "Delivery failed; no opportunity charged and vacancy advanced.",
+      };
+      addAudit(draft, { outcome, profileName: profile.name, message: messages[outcome], vacancyLabel: `${vacancy.unit} ${vacancy.rank}` });
+      return draft;
+    });
+  }
+
+  function recordBypass(id) {
+    setState((current) => {
+      const draft = deepClone(current);
+      const vacancy = draft.vacancies.find((item) => item.id === id);
+      if (!vacancy?.currentOffer) return current;
+      const profile = draft.profiles.find((item) => item.id === vacancy.currentOffer.profileId);
+      vacancy.mandatoryBypassIds.push(profile.id);
+      vacancy.history.push({ at: timestamp(), action: "MANDATORY_BYPASS", profileId: profile.id, tier: "MANDATORY" });
+      vacancy.currentOffer = null;
+      addAudit(draft, { outcome: "BYPASS", profileName: profile.name, message: "Mandatory candidate bypassed for this vacancy; rotation position unchanged.", vacancyLabel: `${vacancy.unit} ${vacancy.rank}` });
+      return draft;
+    });
+  }
+
+  function saveTransfer(profileId, move) {
+    setState((current) => {
+      const draft = deepClone(current);
+      const result = applyPersonnelMove(draft.profiles, profileId, move, timestamp());
+      draft.profiles = result.profiles;
+      draft.transfers.push(result.historyEntry);
+      addAudit(draft, {
+        outcome: result.historyEntry.type,
+        profileName: result.historyEntry.profileName,
+        message: `Master list changed from ${result.historyEntry.from.shift}/${result.historyEntry.from.unit} to ${result.historyEntry.to.shift}/${result.historyEntry.to.unit}; opportunity and mandatory history preserved.`,
+        vacancyLabel: "Personnel",
+      });
+      return draft;
+    });
+    setTransferPerson(null);
+  }
+
+  function addPayEntry(form) {
+    setState((current) => {
+      const draft = deepClone(current);
+      const profile = draft.profiles.find((item) => item.id === form.profileId);
+      if (!profile) return current;
+      const entry = createPayEntry(profile, form.codeId, form);
+      draft.payEntries.push(entry);
+      addAudit(draft, {
+        outcome: "PAY_CODE",
+        profileName: profile.name,
+        message: `${entry.telestaffCode} recorded for export preview as ${entry.workdayCode}.`,
+        vacancyLabel: entry.date,
+      });
+      return draft;
+    });
+  }
+
+  return <div className="app-shell">
+    <AppHeader view={view} setView={setView} state={state} date={date} setDate={setDate} onLoadScenario={loadScenario} onReset={resetTestData} />
+    <main className={`content-shell content-${view}`}>
+      {view !== "hiring" ? <SummaryCards state={state} date={date} /> : null}
+      {view === "roster" ? <RosterBoard state={state} date={date} selectedShift={selectedShift} setSelectedShift={setSelectedShift} onCreateVacancy={setVacancyPerson} onOpenHiring={() => setView("hiring")} /> : null}
+      {view === "hiring" ? <HiringDesk state={state} selectedVacancyId={selectedVacancyId} setSelectedVacancyId={setSelectedVacancyId} onSetOffer={setOffer} onOutcome={recordOutcome} onBypass={recordBypass} onStageChange={changeStage} /> : null}
+      {view === "notifications" ? <NotificationsView notifications={state.notifications} vacancies={state.vacancies} onRespond={(notification, outcome) => recordOutcome(notification.vacancyId, outcome)} /> : null}
+      {view === "personnel" ? <WorkforcePersonnelView profiles={state.profiles} transfers={state.transfers} onTransfer={setTransferPerson} /> : null}
+      {view === "paycodes" ? <PayCodesView profiles={state.profiles} payEntries={state.payEntries} onAddPayEntry={addPayEntry} /> : null}
+      {view === "rules" ? <RulesAuditView audit={state.audit} /> : null}
+    </main>
+    <footer className="app-footer"><span>OFD TeleStaff Rules Lab · Internal discussion build</span><span>{TEST_ENVIRONMENT_SUMMARY.totalProfiles} synthetic profiles · Stations 1–6 · A/B/C Shifts + Day Staff</span></footer>
+    {vacancyPerson ? <VacancyModal person={vacancyPerson} date={date} onClose={() => setVacancyPerson(null)} onSave={saveVacancy} /> : null}
+    {transferPerson ? <TransferModal profile={transferPerson} onClose={() => setTransferPerson(null)} onSave={saveTransfer} /> : null}
+  </div>;
 }
