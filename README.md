@@ -1,4 +1,31 @@
-# OFD Staffing Model App
+# OFD TeleStaff Rules Lab
+
+This branch of the OFD staffing model is a **synthetic test environment** for the proposed TeleStaff overtime-hiring workflow. It models Stations 1–6, three shifts, Day Staff, concurrent vacancies, electronic offers, opportunity charging, proximity, and controlled mandatory recommendations.
+
+No real employee names are used in the simulator.
+
+## Test workflow
+
+1. Open the Roster Board and click a position to create a vacancy, or load the 18-vacancy scenario.
+2. Use the Hiring Desk to inspect the Fill by Rules queue.
+3. Send a simulated offer and record Accepted, Refused, No Contact — Expired, or Failed Delivery.
+4. Review opportunity balances and the audit trail.
+5. Mandatory overtime becomes actionable only after voluntary candidates have been exhausted and is recommendation-only until staff approval.
+
+The working voluntary order is Regular KD → Floating KD → KDS not working → Day Staff → off-going/on-coming → mandatory. Opportunity counts, not hours worked, are the fairness measure; in-grade seniority breaks ties.
+
+## Run and validate
+
+```bash
+npm install
+npm test
+npm run dev
+npm run build
+```
+
+---
+
+## Legacy staffing-model background
 
 GitHub-ready Vite + React app built from:
 
