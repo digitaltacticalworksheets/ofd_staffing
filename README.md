@@ -27,6 +27,12 @@ npm run dev
 npm run build
 ```
 
+## GitHub Pages deployment
+
+The `Deploy GitHub Pages` workflow runs the tests, builds the Vite site, and publishes the `dist` artifact whenever a commit reaches `main`. Repository Pages settings must use **GitHub Actions** as the publishing source. The production site is:
+
+`https://digitaltacticalworksheets.github.io/ofd_staffing/`
+
 ---
 
 ## Legacy staffing-model background
