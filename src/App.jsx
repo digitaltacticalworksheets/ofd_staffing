@@ -151,22 +151,50 @@ function SummaryCards({ state, date }) {
   return <section className="summary-grid">{cards.map(([label, value, note, tone]) => <article key={label} className={`summary-card summary-${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</section>;
 }
 
-function RosterSeat({ person, vacancy, onCreateVacancy }) {
-  return <button className={`roster-seat ${vacancy ? "vacant" : ""}`} onClick={() => !vacancy && onCreateVacancy(person)} title={vacancy ? `${vacancy.reason} — ${vacancy.id}` : "Click to create a test vacancy"}>
+function RosterPositionRow({ person, vacancy, onCreateVacancy }) {
+  const qualificationText = person.qualifications.slice(0, 3).join(" · ") || "No special qualification";
+  return <div className={`roster-position-row ${vacancy ? "vacant" : "filled"}`}>
+    <span className="tree-elbow" aria-hidden="true" />
     <div className={`rank-block rank-${person.rank.toLowerCase()}`}>{person.rank}</div>
-    <div className="roster-person"><strong>{vacancy ? "VACANT" : shortName(person.name)}</strong><span>{vacancy ? vacancy.reason : person.qualifications.slice(0, 2).join(" • ") || "No special qualification"}</span></div>
-    {vacancy ? <Badge tone="danger">Open</Badge> : <span className="seat-action">＋</span>}
-  </button>;
+    <div className="position-cell"><strong>{formatRank(person.rank)}</strong><span>{person.position}</span></div>
+    <div className="member-cell"><strong>{vacancy ? "VACANT POSITION" : shortName(person.name)}</strong><span>{vacancy ? vacancy.reason : `${person.id} · ${qualificationText}`}</span></div>
+    <div className="schedule-cell"><strong>{person.shift} Shift</strong><span>{person.kellyGroup ? `Kelly group ${person.kellyGroup}` : "Day Staff"}</span></div>
+    <div className="assignment-cell"><strong>Station {person.station}</strong><span>{person.previousShiftUnit || person.unit} prior assignment</span></div>
+    <div className="roster-status-cell">
+      <Badge tone={vacancy ? "danger" : "success"}>{vacancy ? "OPEN" : "ASSIGNED"}</Badge>
+      <button className={vacancy ? "row-action disabled" : "row-action"} disabled={Boolean(vacancy)} onClick={() => onCreateVacancy(person)}>{vacancy ? "Hiring" : "Create vacancy"}</button>
+    </div>
+  </div>;
 }
 
 function RosterBoard({ state, date, selectedShift, setSelectedShift, onCreateVacancy, onOpenHiring }) {
   const target = computeShiftKelly(date);
   const rosterProfiles = state.profiles.filter((p) => p.shift === selectedShift && p.unit !== "RELIEF");
-  const vacancyBySeat = new Map(state.vacancies.filter((v) => v.date === date && v.status === "OPEN").map((v) => [v.seatPosition, v]));
+  const vacancyBySeat = new Map(state.vacancies.filter((v) => v.date === date && v.shift === selectedShift && v.status === "OPEN").map((v) => [v.seatPosition, v]));
   return <>
-    <div className="section-heading split-heading"><div><span className="eyebrow">TEST ROSTER</span><h2>Six-station staffing board</h2><p>Click any occupied position to create a vacancy and test the Fill by Rules sequence.</p></div><div className="shift-tabs">{SHIFTS.map((shift) => <button key={shift} className={selectedShift === shift ? "active" : ""} onClick={() => setSelectedShift(shift)}>{shift} Shift{shift === target.shift ? <small>Target</small> : null}</button>)}</div></div>
+    <div className="section-heading split-heading"><div><span className="eyebrow">TEST ROSTER</span><h2>Daily staffing roster</h2><p>Stations, units, and assigned positions are displayed as a collapsible roster hierarchy.</p></div><div className="shift-tabs">{SHIFTS.map((shift) => <button key={shift} className={selectedShift === shift ? "active" : ""} onClick={() => setSelectedShift(shift)}>{shift} Shift{shift === target.shift ? <small>Target</small> : null}</button>)}</div></div>
     {selectedShift !== target.shift ? <div className="info-callout">Viewing {selectedShift} Shift for proximity and off-shift testing. The vacancy date belongs to {target.shift} Shift.</div> : null}
-    <div className="station-grid">{STATIONS.map((station) => <section className="station-card" key={station.id}><header><div><span>STATION</span><strong>{station.id}</strong></div><p>{station.district}</p><Badge>{station.units.length} units</Badge></header><div className="unit-stack">{station.units.map((unit) => { const unitPeople = rosterProfiles.filter((p) => p.unit === unit); if (!unitPeople.length) return null; return <div className="roster-unit" key={unit}><div className="unit-title"><strong>{unit}</strong><span>{UNIT_TEMPLATES[unit]?.length || unitPeople.length} positions</span></div>{unitPeople.map((person) => <RosterSeat key={person.id} person={person} vacancy={vacancyBySeat.get(person.position)} onCreateVacancy={onCreateVacancy} />)}</div>; })}</div></section>)}</div>
+    <section className="telestaff-roster">
+      <div className="roster-toolbar"><div><strong>{selectedShift} Shift roster</strong><span>{displayDate(date)} · {rosterProfiles.length} assigned personnel</span></div><div className="roster-legend"><span><i className="legend-dot assigned" />Assigned</span><span><i className="legend-dot open" />Open position</span><span>Click the arrows to collapse stations or units</span></div></div>
+      <div className="roster-column-header"><span /><span>Rank</span><span>Position</span><span>Member / status detail</span><span>Schedule</span><span>Assignment</span><span>Status / action</span></div>
+      <div className="roster-tree">{STATIONS.map((station) => {
+        const stationPeople = rosterProfiles.filter((person) => person.station === station.id && station.units.includes(person.unit));
+        const stationVacancies = stationPeople.filter((person) => vacancyBySeat.has(person.position)).length;
+        return <details className="roster-station-node" key={station.id} open>
+          <summary><span className="station-number">{station.id}</span><div><strong>Station {station.id}</strong><span>{station.district}</span></div><div className="node-summary"><span>{station.units.length} units</span><span>{stationPeople.length - stationVacancies} assigned</span>{stationVacancies ? <Badge tone="danger">{stationVacancies} open</Badge> : <Badge tone="success">Fully staffed</Badge>}</div></summary>
+          <div className="station-children">{station.units.map((unit) => {
+            const unitPeople = rosterProfiles.filter((person) => person.unit === unit).sort((a, b) => a.position.localeCompare(b.position));
+            if (!unitPeople.length) return null;
+            const unitVacancies = unitPeople.filter((person) => vacancyBySeat.has(person.position)).length;
+            const targetPositions = UNIT_TEMPLATES[unit]?.length || unitPeople.length;
+            return <details className="roster-unit-node" key={unit} open>
+              <summary><span className="unit-code">{unit}</span><div><strong>{unit}</strong><span>Station {station.id} assignment group</span></div><div className="node-summary"><span>{unitPeople.length}/{targetPositions} rostered</span>{unitVacancies ? <Badge tone="danger">{unitVacancies} vacancy</Badge> : <Badge>Complete</Badge>}</div></summary>
+              <div className="unit-positions">{unitPeople.map((person) => <RosterPositionRow key={person.id} person={person} vacancy={vacancyBySeat.get(person.position)} onCreateVacancy={onCreateVacancy} />)}</div>
+            </details>;
+          })}</div>
+        </details>;
+      })}</div>
+    </section>
     <div className="roster-footer-panel"><div><span className="eyebrow">RELIEF COMPLEMENT</span><strong>{state.profiles.filter((p) => p.shift === selectedShift && p.unit === "RELIEF").length} synthetic relief profiles</strong><p>Includes FF, Engineer, Lieutenant, District Chief, and Assistant Chief candidates.</p></div><button className="button button-primary" onClick={onOpenHiring}>Open Hiring Desk</button></div>
   </>;
 }
