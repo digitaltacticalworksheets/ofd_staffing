@@ -1,5 +1,19 @@
 export const SHIFTS = ["A", "B", "C"];
 
+export const CREDENTIAL_LETTERS = ["A", "D", "H", "L", "S", "E", "T", "W", "P"];
+
+export const CREDENTIAL_LEGEND = {
+  A: "Technical Rescue Operations — assigned TRT unit or backup",
+  D: "Dive Team Member",
+  H: "Hazardous Materials Technician (HM160)",
+  L: "Truck Company Certified / VMR Tech",
+  S: "Surface Water Rescue Swimmer",
+  E: "Relief Driver",
+  T: "Tower Relief Driver",
+  W: "Woods Truck Relief Driver",
+  P: "Promotional Eligibility List",
+};
+
 export const STATIONS = [
   { id: 1, name: "Station 1", district: "District 1", units: ["E1", "T1", "R1", "D1", "AC1"] },
   { id: 2, name: "Station 2", district: "District 1", units: ["E2", "T2", "R2"] },
@@ -74,6 +88,24 @@ function qualificationsFor(rank, unit, index) {
   return [...new Set(qualifications)];
 }
 
+function credentialLettersFor(rank, unit, index) {
+  const letters = [];
+  const isDriverRank = rank === "ENG";
+  const isCompanyRank = ["FF", "ENG", "LT"].includes(rank);
+
+  if (unit.startsWith("R") || index % 17 === 0) letters.push("A");
+  if (index % 19 === 0) letters.push("D");
+  if (index % 11 === 0) letters.push("H");
+  if (unit.startsWith("T") || index % 13 === 0) letters.push("L");
+  if (index % 7 === 0) letters.push("S");
+  if (isDriverRank || (rank === "FF" && index % 5 === 0)) letters.push("E");
+  if ((unit.startsWith("T") && ["ENG", "FF"].includes(rank)) || index % 23 === 0) letters.push("T");
+  if ((isDriverRank && index % 4 === 0) || index % 29 === 0) letters.push("W");
+  if (isCompanyRank && index % 9 === 0) letters.push("P");
+
+  return CREDENTIAL_LETTERS.filter((letter) => letters.includes(letter));
+}
+
 function buildShiftProfiles() {
   const profiles = [];
   const rankCounters = { FF: 0, ENG: 0, LT: 0, DC: 0, AC: 0 };
@@ -98,6 +130,7 @@ function buildShiftProfiles() {
           previousShiftUnit: unit,
           kellyGroup: ((index + shiftIndex * 2) % 8) + 1,
           qualifications: qualificationsFor(rank, unit, index),
+          credentialLetters: credentialLettersFor(rank, unit, index),
           regularKdOpportunities: (index * 3 + shiftIndex) % 10,
           floatingKdOpportunities: (index + shiftIndex) % 3,
           voluntaryOpportunities: (index * 2 + shiftIndex) % 12,
@@ -134,6 +167,7 @@ function buildShiftProfiles() {
         previousShiftUnit: `E${station}`,
         kellyGroup: ((reliefIndex + shiftIndex) % 8) + 1,
         qualifications: qualificationsFor(rank, reliefIndex % 3 === 0 ? "T1" : "RELIEF", index),
+        credentialLetters: credentialLettersFor(rank, reliefIndex % 3 === 0 ? "T1" : "RELIEF", index),
         regularKdOpportunities: (reliefIndex + shiftIndex) % 7,
         floatingKdOpportunities: (reliefIndex + 1) % 3,
         voluntaryOpportunities: (reliefIndex * 2 + shiftIndex) % 9,
@@ -171,6 +205,7 @@ function buildDayStaffProfiles(startSerial) {
       previousShiftUnit: "DAY STAFF",
       kellyGroup: null,
       qualifications: qualificationsFor(rank, "DAY", serial),
+      credentialLetters: credentialLettersFor(rank, "DAY", serial),
       regularKdOpportunities: 0,
       floatingKdOpportunities: 0,
       voluntaryOpportunities: index % 5,

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { SHIFTS, STATIONS, unitsForStation } from "./data/testEnvironment.js";
-import { PAY_CODES } from "./workforceConfig.js";
+import { CREDENTIAL_LEGEND, SHIFTS, STATIONS, unitsForStation } from "./data/testEnvironment.js";
+import { PAY_CODES, rosterPayCodeLabel } from "./workforceConfig.js";
 
 const RANKS = ["FF", "ENG", "LT", "DC", "AC"];
 const shortName = (name = "") => name.replace("TEST — ", "");
@@ -112,6 +112,46 @@ export function TransferModal({ profile, onClose, onSave }) {
       </div>
       <div className="modal-note">The prior assignment becomes the proximity source for the next shift. Opportunity counts, overtime hours, and mandatory rotation position are retained. A promotion enters the member at the bottom of the new in-grade list.</div>
       <div className="modal-actions"><button type="button" className="button button-secondary" onClick={onClose}>Cancel</button><button className="button button-primary">Apply personnel change</button></div>
+    </form>
+  </div>;
+}
+
+function defaultPayQuantity(codeId) {
+  const code = PAY_CODES.find((item) => item.id === codeId);
+  return code?.quantityType === "Hours" ? 24 : 1;
+}
+
+export function RosterPayCodeModal({ profile, date, onClose, onSave, onClear }) {
+  const initialCodeId = profile.activePayCode?.codeId || "REGULAR_TIME";
+  const [form, setForm] = useState({
+    codeId: initialCodeId,
+    date: profile.activePayCode?.date || date,
+    quantity: profile.activePayCode?.quantity || defaultPayQuantity(initialCodeId),
+    note: profile.activePayCode?.note || "",
+  });
+  const selectedCode = PAY_CODES.find((code) => code.id === form.codeId) || PAY_CODES[0];
+
+  function changeCode(codeId) {
+    setForm({ ...form, codeId, quantity: defaultPayQuantity(codeId) });
+  }
+
+  return <div className="modal-backdrop" onMouseDown={onClose}>
+    <form className="modal-card roster-paycode-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onSave(profile.id, form); }}>
+      <div className="modal-header"><div><span className="eyebrow">ROSTER PERSONNEL</span><h2>{shortName(profile.name)}</h2></div><button type="button" className="icon-button" onClick={onClose}>×</button></div>
+      <div className="current-assignment-strip"><span>Current assignment</span><strong>{profile.shift} Shift · {profile.unit} · Station {profile.station} · {profile.rank}</strong></div>
+      <div className="roster-editor-credentials">
+        <span>Credentials</span>
+        <div className="credential-strip">{profile.credentialLetters?.length ? profile.credentialLetters.map((letter) => <abbr className="credential-letter" title={CREDENTIAL_LEGEND[letter]} key={letter}>{letter}</abbr>) : <em>No credential letters assigned</em>}</div>
+      </div>
+      <div className="form-grid">
+        <label className="span-two">TeleStaff pay code<select value={form.codeId} onChange={(event) => changeCode(event.target.value)}>{PAY_CODES.map((code) => <option key={code.id} value={code.id}>{code.telestaff}</option>)}</select></label>
+        <label>Date<input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} required /></label>
+        <label>{selectedCode.quantityType}<input type="number" min="0" step="1" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} required /></label>
+        <label className="span-two">Note<input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="Optional roster or payroll note" /></label>
+      </div>
+      <div className="roster-paycode-preview"><div><span>Roster badge</span><strong>{rosterPayCodeLabel(form.codeId)}</strong></div><div><span>Workday preview</span><strong>{selectedCode.workdayCode} · {selectedCode.workday}</strong></div><p>{selectedCode.treatment}</p></div>
+      <div className="modal-note">Saving updates the badge beside this member’s name and adds the same record to the Pay Codes ledger. Clearing removes only the roster badge; prior ledger entries remain in the audit history.</div>
+      <div className="modal-actions modal-actions-split">{profile.activePayCode ? <button type="button" className="button button-danger-outline" onClick={() => onClear(profile.id)}>Clear roster pay code</button> : <span />}<div><button type="button" className="button button-secondary" onClick={onClose}>Cancel</button><button className="button button-primary">Save pay code</button></div></div>
     </form>
   </div>;
 }

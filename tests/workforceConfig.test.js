@@ -4,9 +4,12 @@ import {
   PAY_CODES,
   PAY_CODE_BY_ID,
   applyPersonnelMove,
+  applyRosterPayCode,
   buildOfferNotification,
   createPayEntry,
+  rosterPayCodeLabel,
 } from "../src/workforceConfig.js";
+import { CREDENTIAL_LETTERS, TEST_PROFILES } from "../src/data/testEnvironment.js";
 
 function profile(overrides = {}) {
   return {
@@ -106,4 +109,26 @@ test("a test pay entry carries both the Telestaff and Workday values", () => {
   assert.equal(entry.workdayCode, "FTRAN");
   assert.equal(entry.quantity, 2);
   assert.equal(entry.quantityType, "Units");
+});
+
+test("a roster pay-code change updates the active badge and returns the matching ledger entry", () => {
+  const result = applyRosterPayCode(profile(), "KDS_WORKING", {
+    date: "2026-08-14",
+    quantity: 1,
+    note: "Roster test",
+    createdAt: "2026-08-14T08:00:00.000Z",
+  });
+  assert.equal(result.profile.activePayCode.codeId, "KDS_WORKING");
+  assert.equal(result.profile.activePayCode.rosterLabel, "KDS-W");
+  assert.equal(result.entry.telestaffCode, "Kelly Day Swap Working");
+  assert.equal(result.entry.profileId, result.profile.id);
+  assert.equal(rosterPayCodeLabel("OVERTIME"), "OT");
+});
+
+test("synthetic personnel include every ADHLSETWP credential marker", () => {
+  const assignedLetters = new Set(TEST_PROFILES.flatMap((item) => item.credentialLetters || []));
+  assert.deepEqual(CREDENTIAL_LETTERS.filter((letter) => !assignedLetters.has(letter)), []);
+  TEST_PROFILES.forEach((item) => {
+    assert.deepEqual(item.credentialLetters, CREDENTIAL_LETTERS.filter((letter) => item.credentialLetters.includes(letter)));
+  });
 });
