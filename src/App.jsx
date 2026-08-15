@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  SHIFTS, STATIONS, TEST_ENVIRONMENT_SUMMARY, TEST_PROFILES,
+  CREDENTIAL_LEGEND, CREDENTIAL_LETTERS, SHIFTS, STATIONS, TEST_ENVIRONMENT_SUMMARY, TEST_PROFILES,
   UNIT_TEMPLATES, unitsForStation,
 } from "./data/testEnvironment.js";
 import {
@@ -13,13 +13,14 @@ import {
   NotificationsView,
   PayCodesView,
   PersonnelView as WorkforcePersonnelView,
+  RosterPayCodeModal,
   TransferModal,
 } from "./WorkforceViews.jsx";
 import {
   applyPersonnelMove,
+  applyRosterPayCode,
   buildMandatoryNotification,
   buildOfferNotification,
-  createPayEntry,
 } from "./workforceConfig.js";
 
 const TEST_DATE = "2026-08-14";
@@ -64,16 +65,23 @@ const freshTestState = () => ({
   payEntries: [],
   notifications: [],
 });
-const normalizeTestState = (saved) => ({
-  ...freshTestState(),
-  ...saved,
-  profiles: saved?.profiles?.length ? saved.profiles : deepClone(TEST_PROFILES),
-  vacancies: saved?.vacancies || [],
-  audit: saved?.audit || [],
-  transfers: saved?.transfers || [],
-  payEntries: saved?.payEntries || [],
-  notifications: saved?.notifications || [],
-});
+const normalizeTestState = (saved) => {
+  const profileDefaults = new Map(TEST_PROFILES.map((profile) => [profile.id, profile]));
+  return {
+    ...freshTestState(),
+    ...saved,
+    profiles: saved?.profiles?.length ? saved.profiles.map((profile) => ({
+      ...profileDefaults.get(profile.id),
+      ...profile,
+      credentialLetters: profile.credentialLetters || profileDefaults.get(profile.id)?.credentialLetters || [],
+    })) : deepClone(TEST_PROFILES),
+    vacancies: saved?.vacancies || [],
+    audit: saved?.audit || [],
+    transfers: saved?.transfers || [],
+    payEntries: saved?.payEntries || [],
+    notifications: saved?.notifications || [],
+  };
+};
 const formatRank = (rank) => ({ FF: "Firefighter", ENG: "Engineer", LT: "Lieutenant", DC: "District Chief", AC: "Assistant Chief" }[rank] || rank);
 const shortName = (name = "") => name.replace("TEST — ", "");
 const timestamp = () => new Date().toISOString();
@@ -151,22 +159,56 @@ function SummaryCards({ state, date }) {
   return <section className="summary-grid">{cards.map(([label, value, note, tone]) => <article key={label} className={`summary-card summary-${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</section>;
 }
 
-function RosterSeat({ person, vacancy, onCreateVacancy }) {
-  return <button className={`roster-seat ${vacancy ? "vacant" : ""}`} onClick={() => !vacancy && onCreateVacancy(person)} title={vacancy ? `${vacancy.reason} — ${vacancy.id}` : "Click to create a test vacancy"}>
-    <div className={`rank-block rank-${person.rank.toLowerCase()}`}>{person.rank}</div>
-    <div className="roster-person"><strong>{vacancy ? "VACANT" : shortName(person.name)}</strong><span>{vacancy ? vacancy.reason : person.qualifications.slice(0, 2).join(" • ") || "No special qualification"}</span></div>
-    {vacancy ? <Badge tone="danger">Open</Badge> : <span className="seat-action">＋</span>}
-  </button>;
+function CredentialStrip({ letters = [] }) {
+  return <span className="credential-strip" aria-label={letters.length ? `Credentials: ${letters.join(", ")}` : "No credential letters"}>{letters.map((letter) => <abbr className="credential-letter" title={CREDENTIAL_LEGEND[letter]} key={letter}>{letter}</abbr>)}</span>;
 }
 
-function RosterBoard({ state, date, selectedShift, setSelectedShift, onCreateVacancy, onOpenHiring }) {
+function RosterPositionRow({ person, vacancy, onCreateVacancy, onSelectPerson }) {
+  const qualificationText = person.qualifications.slice(0, 3).join(" · ") || "No special qualification";
+  const openPerson = () => { if (!vacancy) onSelectPerson(person); };
+  return <div className={`roster-position-row ${vacancy ? "vacant" : "filled selectable"}`} role={vacancy ? undefined : "button"} tabIndex={vacancy ? undefined : 0} onClick={openPerson} onKeyDown={(event) => { if (!vacancy && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openPerson(); } }}>
+    <span className="tree-elbow" aria-hidden="true" />
+    <div className={`rank-block rank-${person.rank.toLowerCase()}`}>{person.rank}</div>
+    <div className="position-cell"><strong>{formatRank(person.rank)}</strong><span>{person.position}</span></div>
+    <div className="member-cell"><div className="member-name-line"><strong>{vacancy ? "VACANT POSITION" : shortName(person.name)}</strong>{!vacancy ? <><CredentialStrip letters={person.credentialLetters} />{person.activePayCode ? <span className="paycode-badge" title={`${person.activePayCode.label} · ${person.activePayCode.date}`}>{person.activePayCode.rosterLabel}</span> : null}</> : null}</div><span>{vacancy ? vacancy.reason : `${person.id} · ${qualificationText}`}</span></div>
+    <div className="schedule-cell"><strong>{person.shift} Shift</strong><span>{person.kellyGroup ? `Kelly group ${person.kellyGroup}` : "Day Staff"}</span></div>
+    <div className="assignment-cell"><strong>Station {person.station}</strong><span>{person.previousShiftUnit || person.unit} prior assignment</span></div>
+    <div className="roster-status-cell">
+      <Badge tone={vacancy ? "danger" : "success"}>{vacancy ? "OPEN" : "ASSIGNED"}</Badge>
+      <button className={vacancy ? "row-action disabled" : "row-action"} disabled={Boolean(vacancy)} onClick={(event) => { event.stopPropagation(); onCreateVacancy(person); }}>{vacancy ? "Hiring" : "Create vacancy"}</button>
+    </div>
+  </div>;
+}
+
+function RosterBoard({ state, date, selectedShift, setSelectedShift, onCreateVacancy, onSelectPerson, onOpenHiring }) {
   const target = computeShiftKelly(date);
   const rosterProfiles = state.profiles.filter((p) => p.shift === selectedShift && p.unit !== "RELIEF");
-  const vacancyBySeat = new Map(state.vacancies.filter((v) => v.date === date && v.status === "OPEN").map((v) => [v.seatPosition, v]));
+  const vacancyBySeat = new Map(state.vacancies.filter((v) => v.date === date && v.shift === selectedShift && v.status === "OPEN").map((v) => [v.seatPosition, v]));
   return <>
-    <div className="section-heading split-heading"><div><span className="eyebrow">TEST ROSTER</span><h2>Six-station staffing board</h2><p>Click any occupied position to create a vacancy and test the Fill by Rules sequence.</p></div><div className="shift-tabs">{SHIFTS.map((shift) => <button key={shift} className={selectedShift === shift ? "active" : ""} onClick={() => setSelectedShift(shift)}>{shift} Shift{shift === target.shift ? <small>Target</small> : null}</button>)}</div></div>
+    <div className="section-heading split-heading"><div><span className="eyebrow">TEST ROSTER</span><h2>Daily staffing roster</h2><p>Stations, units, and assigned positions are displayed as a collapsible roster hierarchy.</p></div><div className="shift-tabs">{SHIFTS.map((shift) => <button key={shift} className={selectedShift === shift ? "active" : ""} onClick={() => setSelectedShift(shift)}>{shift} Shift{shift === target.shift ? <small>Target</small> : null}</button>)}</div></div>
     {selectedShift !== target.shift ? <div className="info-callout">Viewing {selectedShift} Shift for proximity and off-shift testing. The vacancy date belongs to {target.shift} Shift.</div> : null}
-    <div className="station-grid">{STATIONS.map((station) => <section className="station-card" key={station.id}><header><div><span>STATION</span><strong>{station.id}</strong></div><p>{station.district}</p><Badge>{station.units.length} units</Badge></header><div className="unit-stack">{station.units.map((unit) => { const unitPeople = rosterProfiles.filter((p) => p.unit === unit); if (!unitPeople.length) return null; return <div className="roster-unit" key={unit}><div className="unit-title"><strong>{unit}</strong><span>{UNIT_TEMPLATES[unit]?.length || unitPeople.length} positions</span></div>{unitPeople.map((person) => <RosterSeat key={person.id} person={person} vacancy={vacancyBySeat.get(person.position)} onCreateVacancy={onCreateVacancy} />)}</div>; })}</div></section>)}</div>
+    <section className="telestaff-roster">
+      <div className="roster-toolbar"><div><strong>{selectedShift} Shift roster</strong><span>{displayDate(date)} · {rosterProfiles.length} assigned personnel</span></div><div className="roster-legend"><span><i className="legend-dot assigned" />Assigned</span><span><i className="legend-dot open" />Open position</span><span>Select a person to edit their pay code</span></div></div>
+      <div className="credential-legend"><strong>Credential letters</strong>{CREDENTIAL_LETTERS.map((letter) => <span key={letter}><abbr className="credential-letter" title={CREDENTIAL_LEGEND[letter]}>{letter}</abbr>{CREDENTIAL_LEGEND[letter]}</span>)}</div>
+      <div className="roster-column-header"><span /><span>Rank</span><span>Position</span><span>Member / status detail</span><span>Schedule</span><span>Assignment</span><span>Status / action</span></div>
+      <div className="roster-tree">{STATIONS.map((station) => {
+        const stationPeople = rosterProfiles.filter((person) => person.station === station.id && station.units.includes(person.unit));
+        const stationVacancies = stationPeople.filter((person) => vacancyBySeat.has(person.position)).length;
+        return <details className="roster-station-node" key={station.id} open>
+          <summary><span className="station-number">{station.id}</span><div><strong>Station {station.id}</strong><span>{station.district}</span></div><div className="node-summary"><span>{station.units.length} units</span><span>{stationPeople.length - stationVacancies} assigned</span>{stationVacancies ? <Badge tone="danger">{stationVacancies} open</Badge> : <Badge tone="success">Fully staffed</Badge>}</div></summary>
+          <div className="station-children">{station.units.map((unit) => {
+            const unitPeople = rosterProfiles.filter((person) => person.unit === unit).sort((a, b) => a.position.localeCompare(b.position));
+            if (!unitPeople.length) return null;
+            const unitVacancies = unitPeople.filter((person) => vacancyBySeat.has(person.position)).length;
+            const targetPositions = UNIT_TEMPLATES[unit]?.length || unitPeople.length;
+            return <details className="roster-unit-node" key={unit} open>
+              <summary><span className="unit-code">{unit}</span><div><strong>{unit}</strong><span>Station {station.id} assignment group</span></div><div className="node-summary"><span>{unitPeople.length}/{targetPositions} rostered</span>{unitVacancies ? <Badge tone="danger">{unitVacancies} vacancy</Badge> : <Badge>Complete</Badge>}</div></summary>
+              <div className="unit-positions">{unitPeople.map((person) => <RosterPositionRow key={person.id} person={person} vacancy={vacancyBySeat.get(person.position)} onCreateVacancy={onCreateVacancy} onSelectPerson={onSelectPerson} />)}</div>
+            </details>;
+          })}</div>
+        </details>;
+      })}</div>
+    </section>
     <div className="roster-footer-panel"><div><span className="eyebrow">RELIEF COMPLEMENT</span><strong>{state.profiles.filter((p) => p.shift === selectedShift && p.unit === "RELIEF").length} synthetic relief profiles</strong><p>Includes FF, Engineer, Lieutenant, District Chief, and Assistant Chief candidates.</p></div><button className="button button-primary" onClick={onOpenHiring}>Open Hiring Desk</button></div>
   </>;
 }
@@ -230,6 +272,7 @@ export default function App() {
   const [selectedVacancyId, setSelectedVacancyId] = useState(state.vacancies[0]?.id || null);
   const [vacancyPerson, setVacancyPerson] = useState(null);
   const [transferPerson, setTransferPerson] = useState(null);
+  const [rosterPerson, setRosterPerson] = useState(null);
   useEffect(() => setSelectedShift(computeShiftKelly(date).shift), [date]);
   const addAudit = (draft, details) => draft.audit.push({ id: `AUD-${Date.now()}-${draft.audit.length}`, at: timestamp(), ...details });
 
@@ -372,25 +415,51 @@ export default function App() {
   function addPayEntry(form) {
     setState((current) => {
       const draft = deepClone(current);
-      const profile = draft.profiles.find((item) => item.id === form.profileId);
-      if (!profile) return current;
-      const entry = createPayEntry(profile, form.codeId, form);
+      const profileIndex = draft.profiles.findIndex((item) => item.id === form.profileId);
+      if (profileIndex < 0) return current;
+      const result = applyRosterPayCode(draft.profiles[profileIndex], form.codeId, form);
+      draft.profiles[profileIndex] = result.profile;
+      const entry = result.entry;
       draft.payEntries.push(entry);
       addAudit(draft, {
         outcome: "PAY_CODE",
-        profileName: profile.name,
-        message: `${entry.telestaffCode} recorded for export preview as ${entry.workdayCode}.`,
+        profileName: result.profile.name,
+        message: `${entry.telestaffCode} recorded, displayed on the roster, and prepared for export preview as ${entry.workdayCode}.`,
         vacancyLabel: entry.date,
       });
       return draft;
     });
   }
 
+  function saveRosterPayCode(profileId, form) {
+    addPayEntry({ ...form, profileId });
+    setRosterPerson(null);
+  }
+
+  function clearRosterPayCode(profileId) {
+    setState((current) => {
+      const draft = deepClone(current);
+      const profileIndex = draft.profiles.findIndex((profile) => profile.id === profileId);
+      if (profileIndex < 0) return current;
+      const profile = draft.profiles[profileIndex];
+      const clearedLabel = profile.activePayCode?.label || "Roster pay code";
+      draft.profiles[profileIndex] = { ...profile, activePayCode: null };
+      addAudit(draft, {
+        outcome: "PAY_CODE_CLEARED",
+        profileName: profile.name,
+        message: `${clearedLabel} removed from the active roster display; historical pay entries were retained.`,
+        vacancyLabel: "Roster",
+      });
+      return draft;
+    });
+    setRosterPerson(null);
+  }
+
   return <div className="app-shell">
     <AppHeader view={view} setView={setView} state={state} date={date} setDate={setDate} onLoadScenario={loadScenario} onReset={resetTestData} />
     <main className={`content-shell content-${view}`}>
       {view !== "hiring" ? <SummaryCards state={state} date={date} /> : null}
-      {view === "roster" ? <RosterBoard state={state} date={date} selectedShift={selectedShift} setSelectedShift={setSelectedShift} onCreateVacancy={setVacancyPerson} onOpenHiring={() => setView("hiring")} /> : null}
+      {view === "roster" ? <RosterBoard state={state} date={date} selectedShift={selectedShift} setSelectedShift={setSelectedShift} onCreateVacancy={setVacancyPerson} onSelectPerson={setRosterPerson} onOpenHiring={() => setView("hiring")} /> : null}
       {view === "hiring" ? <HiringDesk state={state} selectedVacancyId={selectedVacancyId} setSelectedVacancyId={setSelectedVacancyId} onSetOffer={setOffer} onOutcome={recordOutcome} onBypass={recordBypass} onStageChange={changeStage} /> : null}
       {view === "notifications" ? <NotificationsView notifications={state.notifications} vacancies={state.vacancies} onRespond={(notification, outcome) => recordOutcome(notification.vacancyId, outcome)} /> : null}
       {view === "personnel" ? <WorkforcePersonnelView profiles={state.profiles} transfers={state.transfers} onTransfer={setTransferPerson} /> : null}
@@ -400,5 +469,6 @@ export default function App() {
     <footer className="app-footer"><span>OFD TeleStaff Rules Lab · Internal discussion build</span><span>{TEST_ENVIRONMENT_SUMMARY.totalProfiles} synthetic profiles · Stations 1–6 · A/B/C Shifts + Day Staff</span></footer>
     {vacancyPerson ? <VacancyModal person={vacancyPerson} date={date} onClose={() => setVacancyPerson(null)} onSave={saveVacancy} /> : null}
     {transferPerson ? <TransferModal profile={transferPerson} onClose={() => setTransferPerson(null)} onSave={saveTransfer} /> : null}
+    {rosterPerson ? <RosterPayCodeModal profile={state.profiles.find((profile) => profile.id === rosterPerson.id) || rosterPerson} date={date} onClose={() => setRosterPerson(null)} onSave={saveRosterPayCode} onClear={clearRosterPayCode} /> : null}
   </div>;
 }

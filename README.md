@@ -6,7 +6,7 @@ No real employee names are used in the simulator.
 
 ## Test workflow
 
-1. Open the Roster Board and click a position to create a vacancy, or load the 18-vacancy scenario.
+1. Open the Roster Board to review the nested Station → Unit → Position list. Select an assigned person to change their active pay code; the compact code badge appears beside their name and the entry is also added to the Pay Codes ledger. Use the separate **Create vacancy** button to open a position.
 2. Use the Hiring Desk to inspect the Fill by Rules queue.
 3. Send a simulated offer, open the Notifications tab, and respond to the exact sample employee text with ACCEPT, DECLINE, Offer Expired, or Failed Delivery.
 4. Use Personnel & Transfers to test a transfer, promotion, or Kelly Day change. The prior assignment remains the next-shift proximity source and overtime history is preserved.
@@ -17,6 +17,8 @@ No real employee names are used in the simulator.
 The working voluntary order is Regular KD → Floating KD → KDS not working → Day Staff → off-going/on-coming → mandatory. Opportunity counts, not hours worked, are the fairness measure; in-grade seniority breaks ties.
 
 The pay-code catalog includes Regular Time, Overtime, Vacation, Travel Pay 1/2, Transport Pay, all four WHC levels, both time-swap records, DOI, RDO/RDOF, and both Kelly Day Swap records. Unresolved Workday mappings remain labeled `TBD` so the lab does not present a proposed treatment as final policy.
+
+Synthetic personnel also carry the OFD credential letters shown directly in the roster: `A D H L S E T W P`. The on-screen legend defines each marker, including technical rescue operations, dive, hazmat, truck/VMR, surface-water swimmer, relief driver, tower relief driver, woods-truck relief driver, and promotional eligibility.
 
 ## Run and validate
 

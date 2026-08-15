@@ -134,6 +134,30 @@ export const PAY_CODES = [
 
 export const PAY_CODE_BY_ID = Object.fromEntries(PAY_CODES.map((code) => [code.id, code]));
 
+export const PAY_CODE_ROSTER_LABELS = {
+  REGULAR_TIME: "REG",
+  OVERTIME: "OT",
+  VACATION: "VAC",
+  TRAVEL_PAY_1: "TP1",
+  TRAVEL_PAY_2: "TP2",
+  TRANSPORT_PAY: "TRANS",
+  WHC_ENGINEER: "WHC-ENG",
+  WHC_LIEUTENANT: "WHC-LT",
+  WHC_DISTRICT_CHIEF: "WHC-DC",
+  WHC_ASSISTANT_CHIEF: "WHC-AC",
+  TIME_SWAP_WORKING: "TS-W",
+  TIME_SWAP_OFF: "TS-OFF",
+  DOI: "DOI",
+  RDOF: "RDOF",
+  RDO: "RDO",
+  KDS_WORKING: "KDS-W",
+  KDS_OFF: "KDS-OFF",
+};
+
+export function rosterPayCodeLabel(codeId) {
+  return PAY_CODE_ROSTER_LABELS[codeId] || PAY_CODE_BY_ID[codeId]?.telestaff || codeId;
+}
+
 const rankLabel = (rank) => ({
   FF: "Firefighter",
   ENG: "Engineer",
@@ -261,5 +285,25 @@ export function createPayEntry(profile, codeId, details = {}) {
     quantityType: code.quantityType,
     note: details.note || "",
     createdAt: details.createdAt || new Date().toISOString(),
+  };
+}
+
+export function applyRosterPayCode(profile, codeId, details = {}) {
+  const entry = createPayEntry(profile, codeId, details);
+  return {
+    profile: {
+      ...profile,
+      activePayCode: {
+        codeId: entry.codeId,
+        label: entry.telestaffCode,
+        rosterLabel: rosterPayCodeLabel(entry.codeId),
+        date: entry.date,
+        quantity: entry.quantity,
+        quantityType: entry.quantityType,
+        note: entry.note,
+        updatedAt: entry.createdAt,
+      },
+    },
+    entry,
   };
 }
